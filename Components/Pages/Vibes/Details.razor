@@ -1,0 +1,237 @@
+@page "/vibes/{Id:int}"
+@rendermode InteractiveServer
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>@(project?.Title ?? "Vibe") - EchoVibe</PageTitle>
+
+@if (project is null)
+{
+    <p>@(notFound ? "Vibe not found." : "Loading...")</p>
+}
+else
+{
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            @if (!string.IsNullOrEmpty(project.ImageUrl))
+            {
+                <img src="@project.ImageUrl" alt="@project.Title"
+                     class="img-fluid rounded mb-3"
+                     style="width:100%; max-height:420px; object-fit:cover;" />
+            }
+
+            @if (!string.IsNullOrEmpty(project.VibeType))
+            {
+                <span class="badge bg-primary mb-2">@project.VibeType</span>
+            }
+
+            <h1>@project.Title</h1>
+            <p class="text-muted">
+                By <strong>@(project.User?.DisplayName ?? "User")</strong>
+                · @project.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+            </p>
+
+            <div class="mb-3" style="white-space: pre-wrap;">@project.Description</div>
+
+            <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+                @if (isAuthenticated)
+                {
+                    <button class="btn @(hasLiked ? "btn-danger" : "btn-outline-danger") btn-sm"
+                            @onclick="ToggleLike">
+                        @(hasLiked ? "♥ Unlike" : "♡ Like") (@likeCount)
+                    </button>
+
+                    @if (!isOwnVibe)
+                    {
+                        <button class="btn @(isFollowing ? "btn-secondary" : "btn-outline-primary") btn-sm"
+                                @onclick="ToggleFollow">
+                            @(isFollowing ? "Unfollow" : "Follow") @(project.User?.DisplayName)
+                        </button>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">
+                        ♡ @likeCount likes —
+                        <a href="/Account/Login">Login</a> to like
+                    </span>
+                }
+                <a class="btn btn-outline-secondary btn-sm" href="vibes">Back to Vibes</a>
+            </div>
+
+            <hr />
+
+            <h4>Comments (@(project.Comments?.Count ?? 0))</h4>
+
+            @if (isAuthenticated)
+            {
+                <div class="mb-3">
+                    <textarea class="form-control mb-2" rows="2" @bind="newComment"
+                              placeholder="Write a comment..."></textarea>
+                    <button class="btn btn-primary btn-sm" @onclick="AddComment"
+                            disabled="@string.IsNullOrWhiteSpace(newComment)">
+                        Post Comment
+                    </button>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted"><a href="/Account/Login">Login</a> to comment.</p>
+            }
+
+            @if (project.Comments != null && project.Comments.Any())
+            {
+                @foreach (var c in project.Comments.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between small">
+                            <strong>@(c.User?.DisplayName ?? "User")</strong>
+                            <span class="text-muted">@c.CreatedAt.ToLocalTime().ToString("MMM dd, HH:mm")</span>
+                        </div>
+                        <div style="white-space: pre-wrap;">@c.Content</div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted">No comments yet.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Project? project;
+    private bool notFound;
+    private bool isAuthenticated;
+    private bool hasLiked;
+    private int likeCount;
+    private string? currentUserId;
+    private string newComment = string.Empty;
+    private bool isFollowing;
+    private bool isOwnVibe;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        project = await Db.Projects
+            .Include(p => p.User)
+            .Include(p => p.Likes)
+            .Include(p => p.Comments).ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(p => p.Id == Id);
+
+        if (project is null)
+        {
+            notFound = true;
+            return;
+        }
+
+        likeCount = project.Likes?.Count ?? 0;
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        isAuthenticated = state.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthenticated)
+        {
+            var user = await UserManager.GetUserAsync(state.User);
+            currentUserId = user?.Id;
+
+            hasLiked = currentUserId != null &&
+                       project.Likes != null &&
+                       project.Likes.Any(l => l.UserId == currentUserId);
+
+            isOwnVibe = currentUserId != null && project.UserId == currentUserId;
+
+            isFollowing = currentUserId != null &&
+                await Db.Follows.AnyAsync(f =>
+                    f.FollowerId == currentUserId && f.FollowingId == project.UserId);
+        }
+        else
+        {
+            currentUserId = null;
+            hasLiked = false;
+            isOwnVibe = false;
+            isFollowing = false;
+        }
+    }
+
+    private async Task ToggleLike()
+    {
+        if (currentUserId is null || project is null) return;
+
+        var existing = await Db.Likes
+            .FirstOrDefaultAsync(l => l.ProjectId == Id && l.UserId == currentUserId);
+
+        if (existing is not null)
+        {
+            Db.Likes.Remove(existing);
+        }
+        else
+        {
+            Db.Likes.Add(new Like
+            {
+                ProjectId = Id,
+                UserId = currentUserId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+    }
+
+    private async Task ToggleFollow()
+    {
+        if (currentUserId is null || project is null || isOwnVibe) return;
+
+        var existing = await Db.Follows.FirstOrDefaultAsync(f =>
+            f.FollowerId == currentUserId && f.FollowingId == project.UserId);
+
+        if (existing is not null)
+        {
+            Db.Follows.Remove(existing);
+        }
+        else
+        {
+            Db.Follows.Add(new Follow
+            {
+                FollowerId = currentUserId,
+                FollowingId = project.UserId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+    }
+
+    private async Task AddComment()
+    {
+        if (currentUserId is null || string.IsNullOrWhiteSpace(newComment)) return;
+
+        Db.Comments.Add(new Comment
+        {
+            ProjectId = Id,
+            UserId = currentUserId,
+            Content = newComment.Trim(),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+        newComment = string.Empty;
+        await LoadAsync();
+    }
+}

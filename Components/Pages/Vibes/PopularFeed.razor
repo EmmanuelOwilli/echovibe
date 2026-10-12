@@ -1,0 +1,66 @@
+@page "/feed/popular"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+
+<PageTitle>Popular Vibes - EchoVibe</PageTitle>
+
+<h1>Popular vibes</h1>
+<p class="text-muted">Most liked vibes in the community.</p>
+
+@if (items is null)
+{
+    <p>Loading...</p>
+}
+else if (!items.Any())
+{
+    <p class="text-muted">No vibes yet.</p>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var p in items)
+        {
+            var likes = p.Likes?.Count ?? 0;
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    @if (!string.IsNullOrEmpty(p.ImageUrl))
+                    {
+                        <img src="@p.ImageUrl" class="card-img-top" alt="@p.Title"
+                             style="height:180px;object-fit:cover;" />
+                    }
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(p.VibeType))
+                        {
+                            <span class="badge bg-primary mb-2">@p.VibeType</span>
+                        }
+                        <h5>@p.Title</h5>
+                        <p class="small text-muted">
+                            By @(p.User?.DisplayName ?? "User") · ♥ @likes
+                        </p>
+                        <a class="btn btn-sm btn-outline-primary" href="@($"vibes/{p.Id}")">View Vibe</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Project>? items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await Db.Projects
+            .Include(p => p.User)
+            .Include(p => p.Likes)
+            .OrderByDescending(p => p.Likes.Count)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(50)
+            .ToListAsync();
+    }
+}

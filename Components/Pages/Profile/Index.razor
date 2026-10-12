@@ -1,0 +1,61 @@
+@page "/profile"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>My Profile - EchoVibe</PageTitle>
+
+@if (user is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body text-center p-4">
+                    @if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+                    {
+                        <img src="@user.ProfileImageUrl" alt="Profile"
+                             class="rounded-circle mb-3"
+                             style="width:120px;height:120px;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3"
+                             style="width:120px;height:120px;font-size:2.5rem;">
+                            @(string.IsNullOrEmpty(user.DisplayName) ? "?" : user.DisplayName[0])
+                        </div>
+                    }
+                    <h2>@user.DisplayName</h2>
+                    <p class="text-muted">@user.Email</p>
+                    @if (!string.IsNullOrEmpty(user.Country))
+                    {
+                        <p><strong>Country:</strong> @user.Country</p>
+                    }
+                    @if (!string.IsNullOrEmpty(user.Bio))
+                    {
+                        <p style="white-space:pre-wrap;">@user.Bio</p>
+                    }
+                    <a class="btn btn-primary" href="profile/edit">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ApplicationUser? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        user = await UserManager.GetUserAsync(state.User);
+    }
+}

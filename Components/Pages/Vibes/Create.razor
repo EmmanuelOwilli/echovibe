@@ -1,0 +1,147 @@
+@page "/vibes/create"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Hosting
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Env
+
+<PageTitle>Create Vibe - EchoVibe</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1 class="mb-3">Create Vibe</h1>
+
+        <EditForm Model="Input" OnValidSubmit="HandleCreate">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <InputText class="form-control" @bind-Value="Input.Title" />
+                <ValidationMessage For="() => Input.Title" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Vibe type</label>
+                <InputSelect class="form-select" @bind-Value="Input.VibeType">
+                    <option value="">Select a type...</option>
+                    @foreach (var t in VibeTypes.All)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <InputTextArea class="form-control" rows="4" @bind-Value="Input.Description" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Cover image (optional)</label>
+                <InputFile class="form-control" OnChange="OnFileChange" accept="image/*" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@busy">
+                @(busy ? "Saving..." : "Create Vibe")
+            </button>
+            <a class="btn btn-outline-secondary ms-2" href="vibes">Cancel</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private CreateModel Input { get; set; } = new();
+    private IBrowserFile? selectedFile;
+    private string? errorMessage;
+    private bool busy;
+
+    private void OnFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task HandleCreate()
+    {
+        busy = true;
+        errorMessage = null;
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(state.User);
+        if (user is null)
+        {
+            Navigation.NavigateTo("/Account/Login", forceLoad: true);
+            return;
+        }
+
+        string? imageUrl = null;
+        if (selectedFile is not null)
+        {
+            imageUrl = await SaveImageAsync(selectedFile);
+            if (imageUrl is null)
+            {
+                errorMessage = "Only images under 5 MB (jpg, png, gif, webp) are allowed.";
+                busy = false;
+                return;
+            }
+        }
+
+        var project = new Project
+        {
+            Title = Input.Title.Trim(),
+            Description = Input.Description?.Trim(),
+            VibeType = string.IsNullOrWhiteSpace(Input.VibeType) ? null : Input.VibeType,
+            ImageUrl = imageUrl,
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        Db.Projects.Add(project);
+        await Db.SaveChangesAsync();
+        Navigation.NavigateTo($"vibes/{project.Id}");
+    }
+
+    private async Task<string?> SaveImageAsync(IBrowserFile file)
+    {
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!allowed.Contains(ext) || file.Size > 5 * 1024 * 1024)
+            return null;
+
+        var uploads = Path.Combine(Env.WebRootPath, "uploads", "vibes");
+        Directory.CreateDirectory(uploads);
+        var name = $"{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(uploads, name);
+
+        await using var stream = File.Create(path);
+        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
+        return $"/uploads/vibes/{name}";
+    }
+
+    private sealed class CreateModel
+    {
+        [Required, StringLength(100)]
+        public string Title { get; set; } = string.Empty;
+
+        [StringLength(2000)]
+        public string? Description { get; set; }
+
+        public string? VibeType { get; set; }
+    }
+}

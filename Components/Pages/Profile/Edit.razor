@@ -1,0 +1,152 @@
+@page "/profile/edit"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Env
+
+<PageTitle>Edit Profile - EchoVibe</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="mb-3">Edit Profile</h1>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-success">@message</div>
+        }
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+
+        <EditForm Model="Input" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3 text-center">
+                @if (!string.IsNullOrEmpty(previewUrl))
+                {
+                    <img src="@previewUrl" class="rounded-circle mb-2"
+                         style="width:100px;height:100px;object-fit:cover;" alt="Profile" />
+                }
+                <InputFile class="form-control" OnChange="OnFile" accept="image/*" />
+                <div class="form-text">Optional. JPG/PNG/GIF/WebP, max 5 MB.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Display name</label>
+                <InputText class="form-control" @bind-Value="Input.DisplayName" />
+                <ValidationMessage For="() => Input.DisplayName" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Bio</label>
+                <InputTextArea class="form-control" rows="3" @bind-Value="Input.Bio" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Country</label>
+                <InputText class="form-control" @bind-Value="Input.Country" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@busy">
+                @(busy ? "Saving..." : "Save Changes")
+            </button>
+            <a class="btn btn-outline-secondary ms-2" href="profile">Cancel</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private ApplicationUser? user;
+    private ProfileModel Input { get; set; } = new();
+    private IBrowserFile? file;
+    private string? previewUrl;
+    private string? message;
+    private string? error;
+    private bool busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        user = await UserManager.GetUserAsync(state.User);
+        if (user is null) return;
+
+        Input = new ProfileModel
+        {
+            DisplayName = user.DisplayName,
+            Bio = user.Bio,
+            Country = user.Country
+        };
+        previewUrl = user.ProfileImageUrl;
+    }
+
+    private void OnFile(InputFileChangeEventArgs e) => file = e.File;
+
+    private async Task SaveAsync()
+    {
+        if (user is null) return;
+        busy = true;
+        error = null;
+        message = null;
+
+        user.DisplayName = Input.DisplayName.Trim();
+        user.Bio = Input.Bio?.Trim();
+        user.Country = Input.Country?.Trim();
+
+        if (file is not null)
+        {
+            var url = await SaveImageAsync(file);
+            if (url is null)
+            {
+                error = "Invalid image. Use jpg/png/gif/webp under 5 MB.";
+                busy = false;
+                return;
+            }
+            user.ProfileImageUrl = url;
+            previewUrl = url;
+        }
+
+        var result = await UserManager.UpdateAsync(user);
+        if (result.Succeeded)
+        {
+            message = "Profile updated.";
+            Navigation.NavigateTo("/profile");
+        }
+        else
+        {
+            error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+        busy = false;
+    }
+
+    private async Task<string?> SaveImageAsync(IBrowserFile f)
+    {
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(f.Name).ToLowerInvariant();
+        if (!allowed.Contains(ext) || f.Size > 5 * 1024 * 1024) return null;
+
+        var dir = Path.Combine(Env.WebRootPath, "uploads", "profiles");
+        Directory.CreateDirectory(dir);
+        var name = $"{Guid.NewGuid():N}{ext}";
+        await using var stream = File.Create(Path.Combine(dir, name));
+        await f.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
+        return $"/uploads/profiles/{name}";
+    }
+
+    private class ProfileModel
+    {
+        [Required, StringLength(50)]
+        public string DisplayName { get; set; } = "";
+        [StringLength(500)]
+        public string? Bio { get; set; }
+        [StringLength(100)]
+        public string? Country { get; set; }
+    }
+}

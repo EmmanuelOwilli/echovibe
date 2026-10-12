@@ -1,0 +1,364 @@
+:root {
+    --ev-sky: #38bdf8;
+    --ev-sky-mid: #0ea5e9;
+    --ev-sky-deep: #0284c7;
+    --ev-sky-dark: #0369a1;
+    --ev-sky-soft: #e0f2fe;
+    --ev-sky-pale: #f0f9ff;
+    --ev-ink: #0f172a;
+    --ev-muted: #64748b;
+    --ev-white: #ffffff;
+}
+
+/* ----- Base ----- */
+html, body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ev-ink);
+    background: #f8fafc;
+}
+
+a, .btn-link {
+    color: var(--ev-sky-deep);
+}
+
+.content {
+    padding-top: 1.1rem;
+    padding-bottom: 2rem;
+}
+
+h1:focus {
+    outline: none;
+}
+
+/* ----- Buttons ----- */
+.btn-primary {
+    color: #fff;
+    background-color: var(--ev-sky-mid);
+    border-color: var(--ev-sky-deep);
+}
+
+.btn-primary:hover {
+    background-color: var(--ev-sky-deep);
+    border-color: var(--ev-sky-dark);
+}
+
+.btn-outline-primary {
+    color: var(--ev-sky-deep);
+    border-color: var(--ev-sky-mid);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--ev-sky-mid);
+    color: #fff;
+    border-color: var(--ev-sky-mid);
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem rgba(14, 165, 233, 0.45);
+}
+
+/* ----- Validation ----- */
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid #e50000;
+}
+
+.validation-message {
+    color: #e50000;
+}
+
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem 1rem 1rem 1rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+.darker-border-checkbox.form-check-input {
+    border-color: #929292;
+}
+
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* ----- Cards ----- */
+.card {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08);
+}
+
+.card-title {
+    font-weight: 700;
+}
+
+.badge.bg-primary {
+    background-color: var(--ev-sky-mid) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--ev-sky-soft) !important;
+    color: var(--ev-sky-dark) !important;
+}
+
+/* =========================================================
+   SIDEBAR — sky blue
+   ========================================================= */
+
+.sidebar {
+    background: linear-gradient(
+        180deg,
+        #38bdf8 0%,
+        #0ea5e9 45%,
+        #0284c7 100%
+    ) !important;
+}
+
+.sidebar .top-row,
+.sidebar .navbar,
+.sidebar .navbar-brand {
+    background: transparent !important;
+    color: #fff !important;
+}
+
+.sidebar .navbar-brand {
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 0.5rem;
+    margin: 0.15rem 0.5rem;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.22) !important;
+    color: #fff !important;
+}
+
+/* =========================================================
+   TOP BAR — deep sky (logged-in only)
+   ========================================================= */
+
+.ev-topbar {
+    background: linear-gradient(90deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%);
+    padding: 0.65rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    box-shadow: 0 2px 12px rgba(3, 105, 161, 0.25);
+}
+
+.ev-topnav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.45rem;
+    align-items: center;
+}
+
+.ev-top-link {
+    color: rgba(255, 255, 255, 0.92) !important;
+    text-decoration: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ev-top-link:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff !important;
+}
+
+.ev-top-link.active {
+    background: #fff;
+    color: var(--ev-sky-dark) !important;
+}
+
+/* =========================================================
+   HOME PAGE — sky blue
+   ========================================================= */
+
+.ev-hero {
+    background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%);
+    color: #fff;
+    border-radius: 1.15rem;
+    padding: 2.75rem 2rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 16px 40px rgba(14, 165, 233, 0.25);
+}
+
+.ev-hero-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ev-hero-text {
+    flex: 1 1 300px;
+    max-width: 560px;
+}
+
+.ev-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.22);
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.ev-hero h1 {
+    font-weight: 800;
+    font-size: clamp(1.85rem, 4vw, 2.75rem);
+    line-height: 1.12;
+    margin-bottom: 1rem;
+}
+
+.ev-hero h1 span {
+    color: #e0f2fe;
+}
+
+.ev-hero p {
+    font-size: 1.05rem;
+    opacity: 0.95;
+    margin-bottom: 1.4rem;
+}
+
+.ev-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.ev-hero-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    flex: 0 1 250px;
+}
+
+.ev-mini-card {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 0.85rem;
+    padding: 1.1rem 0.9rem;
+    text-align: center;
+    font-weight: 700;
+}
+
+.ev-section {
+    margin-bottom: 2.25rem;
+}
+
+.ev-section-alt {
+    background: var(--ev-sky-pale);
+    border-radius: 1.1rem;
+    padding: 2rem 1.25rem;
+}
+
+.ev-section-title {
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.ev-section-sub {
+    color: var(--ev-muted);
+    margin-bottom: 1.25rem;
+}
+
+.ev-type-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.ev-type-chip {
+    background: var(--ev-sky-soft);
+    color: var(--ev-sky-dark);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ev-step-num {
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    background: var(--ev-sky-mid);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+}
+
+.ev-weather-card {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: var(--ev-sky-pale);
+    border: 1px solid #bae6fd;
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.ev-weather-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ev-weather-temp {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--ev-sky-deep);
+    line-height: 1;
+}
+
+.ev-cta {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #fff;
+    text-align: center;
+    border-radius: 1.15rem;
+    padding: 2.4rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.ev-cta h2 {
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.ev-cta p {
+    opacity: 0.92;
+    margin-bottom: 1.25rem;
+}

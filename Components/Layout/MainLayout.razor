@@ -1,0 +1,37 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <AuthorizeView>
+            <Authorized>
+                <div class="ev-topbar">
+                    <nav class="ev-topnav">
+                        <NavLink class="ev-top-link" href="vibes">Vibes</NavLink>
+                        <NavLink class="ev-top-link" href="vibes/create">Create</NavLink>
+                        <NavLink class="ev-top-link" href="feed">Feed</NavLink>
+                        <NavLink class="ev-top-link" href="search">Search</NavLink>
+                        <NavLink class="ev-top-link" href="following">Following</NavLink>
+                        <NavLink class="ev-top-link" href="followers">Followers</NavLink>
+                        <NavLink class="ev-top-link" href="profile">Profile</NavLink>
+                        <NavLink class="ev-top-link" href="feed/new">New</NavLink>
+                        <NavLink class="ev-top-link" href="feed/popular">Popular</NavLink>
+                    </nav>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

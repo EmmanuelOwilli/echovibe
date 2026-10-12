@@ -1,0 +1,278 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Json
+@using System.Text.Json.Serialization
+@inject ApplicationDbContext Db
+@inject HttpClient Http
+
+<PageTitle>EchoVibe - Share your creativity</PageTitle>
+
+<section class="ev-hero">
+    <div class="ev-hero-inner">
+        <div class="ev-hero-text">
+            <span class="ev-badge">Built with .NET Blazor</span>
+            <h1>Share your creativity.<br /><span>Discover your vibe.</span></h1>
+            <p>
+                EchoVibe is a community where creators post vibes, explore moods,
+                like and comment, and follow people who inspire them.
+            </p>
+            <div class="ev-hero-actions">
+                <AuthorizeView>
+                    <Authorized>
+                        <a class="btn btn-light btn-lg" href="vibes">Explore Vibes</a>
+                        <a class="btn btn-outline-light btn-lg" href="vibes/create">+ Create Vibe</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="btn btn-light btn-lg" href="Account/Register">Join EchoVibe</a>
+                        <a class="btn btn-outline-light btn-lg" href="Account/Login">Login</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+        <div class="ev-hero-cards">
+            <div class="ev-mini-card">Night Vibe</div>
+            <div class="ev-mini-card">Ocean Vibe</div>
+            <div class="ev-mini-card">Coffee Vibe</div>
+            <div class="ev-mini-card">Peaceful Vibe</div>
+        </div>
+    </div>
+</section>
+
+@* ===== Weather (can change the mood of a vibe) ===== *@
+<section class="ev-section">
+    <div class="ev-weather-card">
+        <div>
+            <h2 class="ev-section-title mb-1">Today’s weather</h2>
+            <p class="ev-section-sub mb-0">Weather can change the vibe — check before you head out.</p>
+        </div>
+        <div class="ev-weather-body">
+            @if (weatherError is not null)
+            {
+                <span class="text-muted">@weatherError</span>
+            }
+            else if (weather is null)
+            {
+                <span class="text-muted">Loading weather...</span>
+            }
+            else
+            {
+                <div class="ev-weather-main">
+                    <span class="ev-weather-temp">@weather.Temperature.ToString("0")°</span>
+                    <div>
+                        <div class="fw-semibold">@weather.Description</div>
+                        <div class="small text-muted">@weather.Location · Wind @weather.WindSpeed.ToString("0") km/h</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="ev-section">
+    <h2 class="ev-section-title">Find your mood</h2>
+    <p class="ev-section-sub">Nine vibe types to explore and share.</p>
+    <div class="ev-type-grid">
+        @foreach (var t in VibeTypes.All)
+        {
+            <div class="ev-type-chip">@t</div>
+        }
+    </div>
+</section>
+
+<section class="ev-section ev-section-alt">
+    <h2 class="ev-section-title">How EchoVibe works</h2>
+    <div class="row g-4 text-center">
+        <div class="col-md-4">
+            <div class="ev-step">
+                <div class="ev-step-num">1</div>
+                <h5>Create an account</h5>
+                <p class="text-muted">Register in seconds and set your display name.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ev-step">
+                <div class="ev-step-num">2</div>
+                <h5>Share a vibe</h5>
+                <p class="text-muted">Post a title, mood type, story, and optional image.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ev-step">
+                <div class="ev-step-num">3</div>
+                <h5>Connect</h5>
+                <p class="text-muted">Like, comment, and follow creators you enjoy.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ===== Preview only — full access after login ===== *@
+<section class="ev-section">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h2 class="ev-section-title mb-1">Community vibes</h2>
+            <p class="ev-section-sub mb-0">
+                A peek at what creators are sharing.
+                <strong>Register and login</strong> to explore all vibes, like, comment, and follow.
+            </p>
+        </div>
+        <AuthorizeView>
+            <Authorized>
+                <a class="btn btn-primary" href="vibes">View all vibes</a>
+            </Authorized>
+            <NotAuthorized>
+                <a class="btn btn-primary" href="Account/Register">Register to explore</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+
+    @if (preview is null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!preview.Any())
+    {
+        <p class="text-muted">No vibes yet.</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var p in preview)
+            {
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        @if (!string.IsNullOrEmpty(p.ImageUrl))
+                        {
+                            <img src="@p.ImageUrl" class="card-img-top" alt="@p.Title"
+                                 style="height: 160px; object-fit: cover;" />
+                        }
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(p.VibeType))
+                            {
+                                <span class="badge bg-info text-dark mb-2">@p.VibeType</span>
+                            }
+                            <h5 class="card-title">@p.Title</h5>
+                            <p class="card-text small text-muted">By @(p.User?.DisplayName ?? "User")</p>
+
+                            <AuthorizeView>
+                                <Authorized>
+                                    <a class="btn btn-sm btn-outline-primary" href="@($"vibes/{p.Id}")">View Vibe</a>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <a class="btn btn-sm btn-outline-secondary" href="Account/Login">Login to view</a>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="ev-cta">
+    <h2>Ready to share your vibe?</h2>
+    <p>Join EchoVibe and connect with creative people.</p>
+    <AuthorizeView>
+        <Authorized>
+            <a class="btn btn-light btn-lg" href="vibes/create">Create a Vibe</a>
+        </Authorized>
+        <NotAuthorized>
+            <a class="btn btn-light btn-lg me-2" href="Account/Register">Register</a>
+            <a class="btn btn-outline-light btn-lg" href="Account/Login">Login</a>
+        </NotAuthorized>
+    </AuthorizeView>
+</section>
+
+@code {
+    private List<Project>? preview;
+    private WeatherInfo? weather;
+    private string? weatherError;
+
+   private const double Latitude = 0.3476;
+private const double Longitude = 32.5825;
+private const string LocationName = "Kampala, Uganda";
+
+    protected override async Task OnInitializedAsync()
+    {
+        preview = await Db.Projects
+            .Include(p => p.User)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(3)
+            .ToListAsync();
+
+        await LoadWeatherAsync();
+    }
+
+    private async Task LoadWeatherAsync()
+    {
+        try
+        {
+            var url =
+                $"https://api.open-meteo.com/v1/forecast?latitude={Latitude}&longitude={Longitude}" +
+                "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
+
+            var data = await Http.GetFromJsonAsync<OpenMeteoResponse>(url);
+            if (data?.Current is null)
+            {
+                weatherError = "Weather unavailable right now.";
+                return;
+            }
+
+            weather = new WeatherInfo
+            {
+                Location = LocationName,
+                Temperature = data.Current.Temperature,
+                WindSpeed = data.Current.WindSpeed,
+                Description = WeatherCodeToText(data.Current.WeatherCode)
+            };
+        }
+        catch
+        {
+            weatherError = "Could not load weather. Check your internet connection.";
+        }
+    }
+
+    private static string WeatherCodeToText(int code) => code switch
+    {
+        0 => "Clear sky",
+        1 or 2 or 3 => "Partly cloudy",
+        45 or 48 => "Foggy",
+        51 or 53 or 55 => "Drizzle",
+        61 or 63 or 65 => "Rain",
+        71 or 73 or 75 => "Snow",
+        80 or 81 or 82 => "Rain showers",
+        95 or 96 or 99 => "Thunderstorm",
+        _ => "Mixed conditions"
+    };
+
+    private sealed class WeatherInfo
+    {
+        public string Location { get; set; } = "";
+        public double Temperature { get; set; }
+        public double WindSpeed { get; set; }
+        public string Description { get; set; } = "";
+    }
+
+    private sealed class OpenMeteoResponse
+    {
+        [JsonPropertyName("current")]
+        public OpenMeteoCurrent? Current { get; set; }
+    }
+
+    private sealed class OpenMeteoCurrent
+    {
+        [JsonPropertyName("temperature_2m")]
+        public double Temperature { get; set; }
+
+        [JsonPropertyName("weather_code")]
+        public int WeatherCode { get; set; }
+
+        [JsonPropertyName("wind_speed_10m")]
+        public double WindSpeed { get; set; }
+    }
+}

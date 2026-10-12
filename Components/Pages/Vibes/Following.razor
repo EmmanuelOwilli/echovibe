@@ -1,0 +1,52 @@
+@page "/following"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Following - EchoVibe</PageTitle>
+
+<h1>People you follow</h1>
+
+@if (people is null)
+{
+    <p>Loading...</p>
+}
+else if (!people.Any())
+{
+    <p class="text-muted">You are not following anyone yet. Open a vibe and tap Follow.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var u in people)
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <span><strong>@u.DisplayName</strong> <span class="text-muted">@u.Email</span></span>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<ApplicationUser>? people;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(state.User);
+        if (user is null) return;
+
+        people = await Db.Follows
+            .Where(f => f.FollowerId == user.Id)
+            .Select(f => f.Following!)
+            .ToListAsync();
+    }
+}
