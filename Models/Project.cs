@@ -26,4 +26,5 @@ public class Project
 
     public ICollection<Like> Likes { get; set; } = new List<Like>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public ICollection<VibePost> Posts { get; set; } = new List<VibePost>();
 }
