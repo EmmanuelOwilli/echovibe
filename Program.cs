@@ -3,6 +3,7 @@ using EchoVibe.Data;
 using EchoVibe.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using EchoVibe.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<CloudinaryService>();
 builder.Services.AddHttpClient();
 
 // Blazor

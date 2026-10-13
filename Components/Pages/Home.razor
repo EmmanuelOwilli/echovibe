@@ -7,24 +7,29 @@
 @using System.Net.Http.Json
 @using System.Text.Json.Serialization
 @inject ApplicationDbContext Db
-@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
 
-<PageTitle>EchoVibe - Share your creativity</PageTitle>
+<PageTitle>EchoVibe - A place to feel better</PageTitle>
 
 <section class="ev-hero">
     <div class="ev-hero-inner">
         <div class="ev-hero-text">
-            <span class="ev-badge">Built with .NET Blazor</span>
-            <h1>Share your creativity.<br /><span>Discover your vibe.</span></h1>
+            <span class="ev-badge">Built with .NET Blazor · Faith &amp; comfort</span>
+            <h1>
+                When life feels heavy,<br />
+                <span>find your calm here.</span>
+            </h1>
             <p>
-                EchoVibe is a community where creators post vibes, explore moods,
-                like and comment, and follow people who inspire them.
+                EchoVibe is a gentle space for when you feel bored, stressed, lonely,
+                or disappointed. Share honest moments, explore uplifting vibes, and
+                remember you are not alone — we trust God to renew our strength and
+                fill us with peace again.
             </p>
             <div class="ev-hero-actions">
                 <AuthorizeView>
                     <Authorized>
-                        <a class="btn btn-light btn-lg" href="vibes">Explore Vibes</a>
-                        <a class="btn btn-outline-light btn-lg" href="vibes/create">+ Create Vibe</a>
+                        <a class="btn btn-light btn-lg" href="vibes">Explore comfort</a>
+                        <a class="btn btn-outline-light btn-lg" href="vibes/create">+ Share a vibe</a>
                     </Authorized>
                     <NotAuthorized>
                         <a class="btn btn-light btn-lg" href="Account/Register">Join EchoVibe</a>
@@ -34,37 +39,41 @@
             </div>
         </div>
         <div class="ev-hero-cards">
-            <div class="ev-mini-card">Night Vibe</div>
-            <div class="ev-mini-card">Ocean Vibe</div>
-            <div class="ev-mini-card">Coffee Vibe</div>
-            <div class="ev-mini-card">Peaceful Vibe</div>
+            <div class="ev-mini-card">Peace</div>
+            <div class="ev-mini-card">Hope</div>
+            <div class="ev-mini-card">Rest</div>
+            <div class="ev-mini-card">Prayer</div>
         </div>
     </div>
 </section>
 
-@* ===== Weather (can change the mood of a vibe) ===== *@
+@* ===== Weather (Kampala, Uganda) ===== *@
 <section class="ev-section">
     <div class="ev-weather-card">
         <div>
             <h2 class="ev-section-title mb-1">Today’s weather</h2>
-            <p class="ev-section-sub mb-0">Weather can change the vibe — check before you head out.</p>
+            <p class="ev-section-sub mb-0">
+                Weather can shape the day — a small check-in for Uganda.
+            </p>
         </div>
         <div class="ev-weather-body">
-            @if (weatherError is not null)
-            {
-                <span class="text-muted">@weatherError</span>
-            }
-            else if (weather is null)
+            @if (weatherLoading)
             {
                 <span class="text-muted">Loading weather...</span>
             }
-            else
+            else if (weatherError is not null)
+            {
+                <span class="text-muted">@weatherError</span>
+            }
+            else if (weather is not null)
             {
                 <div class="ev-weather-main">
                     <span class="ev-weather-temp">@weather.Temperature.ToString("0")°</span>
                     <div>
                         <div class="fw-semibold">@weather.Description</div>
-                        <div class="small text-muted">@weather.Location · Wind @weather.WindSpeed.ToString("0") km/h</div>
+                        <div class="small text-muted">
+                            @weather.Location · Wind @weather.WindSpeed.ToString("0") km/h
+                        </div>
                     </div>
                 </div>
             }
@@ -73,51 +82,64 @@
 </section>
 
 <section class="ev-section">
-    <h2 class="ev-section-title">Find your mood</h2>
-    <p class="ev-section-sub">Nine vibe types to explore and share.</p>
+    <h2 class="ev-section-title">Find your feel</h2>
+    <p class="ev-section-sub">
+        Nine feelings people bring here when they need comfort and courage.
+    </p>
     <div class="ev-type-grid">
-        @foreach (var t in VibeTypes.All)
+        @foreach (var feel in ComfortFeels)
         {
-            <div class="ev-type-chip">@t</div>
+            <div class="ev-type-chip">@feel</div>
         }
     </div>
 </section>
 
 <section class="ev-section ev-section-alt">
     <h2 class="ev-section-title">How EchoVibe works</h2>
+    <p class="ev-section-sub text-center mb-4">
+        Simple steps toward peace, connection, and hope.
+    </p>
     <div class="row g-4 text-center">
         <div class="col-md-4">
             <div class="ev-step">
                 <div class="ev-step-num">1</div>
-                <h5>Create an account</h5>
-                <p class="text-muted">Register in seconds and set your display name.</p>
+                <h5>Arrive as you are</h5>
+                <p class="text-muted">
+                    Create an account in seconds. Come tired, stressed, or hopeful —
+                    this space is for real hearts.
+                </p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="ev-step">
                 <div class="ev-step-num">2</div>
-                <h5>Share a vibe</h5>
-                <p class="text-muted">Post a title, mood type, story, and optional image.</p>
+                <h5>Share or receive comfort</h5>
+                <p class="text-muted">
+                    Post a vibe, a short story, a quote, or a photo that lifts the spirit —
+                    or quietly read what others shared.
+                </p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="ev-step">
                 <div class="ev-step-num">3</div>
-                <h5>Connect</h5>
-                <p class="text-muted">Like, comment, and follow creators you enjoy.</p>
+                <h5>Grow in kindness</h5>
+                <p class="text-muted">
+                    Like, comment, and follow people who encourage you. Small kindness
+                    can make a heavy day lighter.
+                </p>
             </div>
         </div>
     </div>
 </section>
 
-@* ===== Preview only — full access after login ===== *@
 <section class="ev-section">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h2 class="ev-section-title mb-1">Community vibes</h2>
             <p class="ev-section-sub mb-0">
-                A peek at what creators are sharing.
-                <strong>Register and login</strong> to explore all vibes, like, comment, and follow.
+                A peek at what people are sharing.
+                <strong>Register and login</strong> to explore fully, like, comment, and follow.
             </p>
         </div>
         <AuthorizeView>
@@ -136,7 +158,7 @@
     }
     else if (!preview.Any())
     {
-        <p class="text-muted">No vibes yet.</p>
+        <p class="text-muted">No vibes yet. Be the first to share comfort.</p>
     }
     else
     {
@@ -147,8 +169,7 @@
                     <div class="card h-100 shadow-sm border-0">
                         @if (!string.IsNullOrEmpty(p.ImageUrl))
                         {
-                            <img src="@p.ImageUrl" class="card-img-top" alt="@p.Title"
-                                 style="height: 160px; object-fit: cover;" />
+                            <img src="@p.ImageUrl" class="card-img-top ev-img-cover" alt="@p.Title" />
                         }
                         <div class="card-body">
                             @if (!string.IsNullOrEmpty(p.VibeType))
@@ -175,11 +196,14 @@
 </section>
 
 <section class="ev-cta">
-    <h2>Ready to share your vibe?</h2>
-    <p>Join EchoVibe and connect with creative people.</p>
+    <h2>You don’t have to carry it alone</h2>
+    <p>
+        Join EchoVibe — share what’s on your heart, find encouragement,
+        and rest in the hope we have in God.
+    </p>
     <AuthorizeView>
         <Authorized>
-            <a class="btn btn-light btn-lg" href="vibes/create">Create a Vibe</a>
+            <a class="btn btn-light btn-lg" href="vibes/create">Share a vibe</a>
         </Authorized>
         <NotAuthorized>
             <a class="btn btn-light btn-lg me-2" href="Account/Register">Register</a>
@@ -189,13 +213,32 @@
 </section>
 
 @code {
+    private static readonly string[] ComfortFeels =
+    {
+        "Peace",
+        "Hope",
+        "Comfort",
+        "Rest",
+        "Courage",
+        "Joy",
+        "Prayer",
+        "Friendship",
+        "Renewal"
+    };
+
     private List<Project>? preview;
     private WeatherInfo? weather;
     private string? weatherError;
+    private bool weatherLoading = true;
 
-   private const double Latitude = 0.3476;
-private const double Longitude = 32.5825;
-private const string LocationName = "Kampala, Uganda";
+    // Kampala, Uganda
+    private const double Latitude = 0.3476;
+    private const double Longitude = 32.5825;
+    private const string LocationName = "Kampala, Uganda";
+
+    // Cache to reduce Open-Meteo rate limits on Render
+    private static WeatherInfo? _cached;
+    private static DateTime _cacheUntil = DateTime.MinValue;
 
     protected override async Task OnInitializedAsync()
     {
@@ -210,16 +253,40 @@ private const string LocationName = "Kampala, Uganda";
 
     private async Task LoadWeatherAsync()
     {
+        weatherLoading = true;
+        weatherError = null;
+
+        if (_cached is not null && DateTime.UtcNow < _cacheUntil)
+        {
+            weather = _cached;
+            weatherLoading = false;
+            return;
+        }
+
         try
         {
+            var http = HttpClientFactory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(12);
+
             var url =
                 $"https://api.open-meteo.com/v1/forecast?latitude={Latitude}&longitude={Longitude}" +
-                "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
+                "&current=temperature_2m,weather_code,wind_speed_10m&timezone=Africa%2FKampala";
 
-            var data = await Http.GetFromJsonAsync<OpenMeteoResponse>(url);
+            using var response = await http.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                weatherError = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                    ? "Weather is busy right now. Try again in a few minutes."
+                    : "Could not load weather for Kampala right now.";
+                weatherLoading = false;
+                return;
+            }
+
+            var data = await response.Content.ReadFromJsonAsync<OpenMeteoResponse>();
             if (data?.Current is null)
             {
                 weatherError = "Weather unavailable right now.";
+                weatherLoading = false;
                 return;
             }
 
@@ -230,17 +297,25 @@ private const string LocationName = "Kampala, Uganda";
                 WindSpeed = data.Current.WindSpeed,
                 Description = WeatherCodeToText(data.Current.WeatherCode)
             };
+
+            _cached = weather;
+            _cacheUntil = DateTime.UtcNow.AddMinutes(30);
         }
         catch
         {
-            weatherError = "Could not load weather. Check your internet connection.";
+            weatherError = "Could not load weather right now. Please try again later.";
+        }
+        finally
+        {
+            weatherLoading = false;
         }
     }
 
     private static string WeatherCodeToText(int code) => code switch
     {
         0 => "Clear sky",
-        1 or 2 or 3 => "Partly cloudy",
+        1 or 2 => "Mainly clear",
+        3 => "Cloudy",
         45 or 48 => "Foggy",
         51 or 53 or 55 => "Drizzle",
         61 or 63 or 65 => "Rain",
