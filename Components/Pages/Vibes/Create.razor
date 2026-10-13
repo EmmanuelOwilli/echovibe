@@ -14,7 +14,8 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
-@inject IWebHostEnvironment Env
+@using EchoVibe.Services
+@inject CloudinaryService Cloudinary
 
 <PageTitle>Create Vibe - EchoVibe</PageTitle>
 
@@ -117,22 +118,13 @@
         Navigation.NavigateTo($"vibes/{project.Id}");
     }
 
-    private async Task<string?> SaveImageAsync(IBrowserFile file)
-    {
-        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (!allowed.Contains(ext) || file.Size > 5 * 1024 * 1024)
-            return null;
+   private async Task<string?> SaveImageAsync(IBrowserFile file)
+{
+    if (!Cloudinary.IsConfigured)
+        return null;
 
-        var uploads = Path.Combine(Env.WebRootPath, "uploads", "vibes");
-        Directory.CreateDirectory(uploads);
-        var name = $"{Guid.NewGuid():N}{ext}";
-        var path = Path.Combine(uploads, name);
-
-        await using var stream = File.Create(path);
-        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
-        return $"/uploads/vibes/{name}";
-    }
+    return await Cloudinary.UploadAsync(file);
+}
 
     private sealed class CreateModel
     {

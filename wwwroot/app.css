@@ -362,3 +362,62 @@ h1:focus {
     opacity: 0.92;
     margin-bottom: 1.25rem;
 }
+
+.ev-img-cover {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    cursor: zoom-in;
+    background: #e2e8f0;
+}
+
+.ev-img-detail {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    cursor: zoom-in;
+    background: #e2e8f0;
+}
+
+.ev-img-post {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    cursor: zoom-in;
+}
+
+.ev-img-avatar {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    cursor: zoom-in;
+}
+
+/* Lightbox */
+.ev-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.85);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    cursor: zoom-out;
+}
+
+.ev-lightbox.open {
+    display: flex;
+}
+
+.ev-lightbox img {
+    max-width: min(960px, 95vw);
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}

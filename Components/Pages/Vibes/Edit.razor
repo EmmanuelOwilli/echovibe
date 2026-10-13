@@ -1,0 +1,167 @@
+@page "/vibes/edit/{Id:int}"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using EchoVibe.Data
+@using EchoVibe.Models
+@using EchoVibe.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+@inject CloudinaryService Cloudinary
+
+<PageTitle>Edit Vibe - EchoVibe</PageTitle>
+
+@if (notFound)
+{
+    <p>Vibe not found.</p>
+}
+else if (forbidden)
+{
+    <p>You can only edit your own vibes.</p>
+}
+else if (Input is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-3">Edit Vibe</h1>
+
+            @if (!string.IsNullOrEmpty(currentImageUrl))
+            {
+                <img src="@currentImageUrl" alt="Current cover" class="ev-img-detail mb-3" />
+            }
+
+            <EditForm Model="Input" OnValidSubmit="HandleSave">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">@errorMessage</div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <InputText class="form-control" @bind-Value="Input.Title" />
+                    <ValidationMessage For="() => Input.Title" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Vibe type</label>
+                    <InputSelect class="form-select" @bind-Value="Input.VibeType">
+                        <option value="">Select a type...</option>
+                        @foreach (var t in VibeTypes.All)
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="form-control" rows="4" @bind-Value="Input.Description" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cover image (optional — upload to replace)</label>
+                    <InputFile class="form-control" OnChange="OnFileChange" accept="image/*" />
+                    <div class="form-text">Leave empty to keep the current photo.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@busy">
+                    @(busy ? "Saving..." : "Save changes")
+                </button>
+                <a class="btn btn-outline-secondary ms-2" href="@($"vibes/{Id}")">Cancel</a>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private EditModel? Input;
+    private string? currentImageUrl;
+    private IBrowserFile? selectedFile;
+    private string? errorMessage;
+    private bool busy;
+    private bool notFound;
+    private bool forbidden;
+    private Project? project;
+
+    protected override async Task OnInitializedAsync()
+    {
+        project = await Db.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+        if (project is null)
+        {
+            notFound = true;
+            return;
+        }
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(state.User);
+        if (user is null || project.UserId != user.Id)
+        {
+            forbidden = true;
+            return;
+        }
+
+        currentImageUrl = project.ImageUrl;
+        Input = new EditModel
+        {
+            Title = project.Title,
+            Description = project.Description,
+            VibeType = project.VibeType
+        };
+    }
+
+    private void OnFileChange(InputFileChangeEventArgs e) => selectedFile = e.File;
+
+    private async Task HandleSave()
+    {
+        if (Input is null || project is null) return;
+        busy = true;
+        errorMessage = null;
+
+        if (selectedFile is not null)
+        {
+            var url = await Cloudinary.UploadAsync(selectedFile);
+            if (url is null)
+            {
+                errorMessage = "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
+                busy = false;
+                return;
+            }
+            project.ImageUrl = url;
+        }
+
+        project.Title = Input.Title.Trim();
+        project.Description = Input.Description?.Trim();
+        project.VibeType = string.IsNullOrWhiteSpace(Input.VibeType) ? null : Input.VibeType;
+        project.UpdatedAt = DateTime.UtcNow;
+
+        await Db.SaveChangesAsync();
+        Navigation.NavigateTo($"vibes/{Id}");
+    }
+
+    private sealed class EditModel
+    {
+        [Required, StringLength(100)]
+        public string Title { get; set; } = string.Empty;
+
+        [StringLength(2000)]
+        public string? Description { get; set; }
+
+        public string? VibeType { get; set; }
+    }
+}

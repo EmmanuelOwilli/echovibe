@@ -10,7 +10,8 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
-@inject IWebHostEnvironment Env
+@using EchoVibe.Services
+@inject CloudinaryService Cloudinary
 
 <PageTitle>@(project?.Title ?? "Vibe") - EchoVibe</PageTitle>
 
@@ -42,31 +43,32 @@ else
             </p>
 
             <div class="mb-3" style="white-space: pre-wrap;">@project.Description</div>
-
-            <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
-                @if (isAuthenticated)
-                {
-                    <button class="btn @(hasLiked ? "btn-danger" : "btn-outline-danger") btn-sm"
-                            @onclick="ToggleLike">
-                        @(hasLiked ? "♥ Unlike" : "♡ Like") (@likeCount)
-                    </button>
-
-                    @if (!isOwnVibe)
-                    {
-                        <button class="btn @(isFollowing ? "btn-secondary" : "btn-outline-primary") btn-sm"
-                                @onclick="ToggleFollow">
-                            @(isFollowing ? "Unfollow" : "Follow") @(project.User?.DisplayName)
-                        </button>
-                    }
-                }
-                else
-                {
-                    <span class="text-muted">
-                        ♡ @likeCount likes — <a href="/Account/Login">Login</a> to like
-                    </span>
-                }
-                <a class="btn btn-outline-secondary btn-sm" href="vibes">Back to Vibes</a>
-            </div>
+            <div class="d-flex align-items-center gap-3 mb-3">
+    @if (!string.IsNullOrEmpty(project.User?.ProfileImageUrl))
+    {
+        <img src="@project.User.ProfileImageUrl"
+             alt="@(project.User.DisplayName)"
+             class="ev-img-avatar"
+             style="width:56px;height:56px;border-radius:50%;object-fit:cover;" />
+    }
+    else
+    {
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+             style="width:56px;height:56px;font-weight:700;">
+            @(project.User?.DisplayName?.FirstOrDefault() ?? '?')
+        </div>
+    }
+    <div>
+        <div class="fw-semibold">@(project.User?.DisplayName ?? "User")</div>
+        <div class="small text-muted">
+            @project.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+            @if (!string.IsNullOrEmpty(project.User?.Country))
+            {
+                <span>· @project.User.Country</span>
+            }
+        </div>
+    </div>
+</div>
 
             <hr />
 
@@ -347,18 +349,10 @@ else
     }
 
     private async Task<string?> SaveImageAsync(IBrowserFile file, string folder)
-    {
-        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (!allowed.Contains(ext) || file.Size > 5 * 1024 * 1024) return null;
-
-        var dir = Path.Combine(Env.WebRootPath, "uploads", folder);
-        Directory.CreateDirectory(dir);
-        var name = $"{Guid.NewGuid():N}{ext}";
-        await using var stream = File.Create(Path.Combine(dir, name));
-        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
-        return $"/uploads/{folder}/{name}";
-    }
+{
+    // folder ignored — Cloudinary hosts the file
+    return await Cloudinary.UploadAsync(file);
+}
 
     private async Task ToggleLike()
     {
