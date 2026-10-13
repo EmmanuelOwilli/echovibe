@@ -9,14 +9,13 @@ public class CloudinaryService
     private readonly HttpClient _http;
     private readonly string _cloudName;
     private readonly string _uploadPreset;
-    private readonly ILogger<CloudinaryService>? _logger;
 
-    public CloudinaryService(HttpClient http, IConfiguration config, ILogger<CloudinaryService>? logger = null)
+    public CloudinaryService(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _cloudName = config["CLOUDINARY_CLOUD_NAME"] ?? "";
-        _uploadPreset = config["CLOUDINARY_UPLOAD_PRESET"] ?? "echovibe";
-        _logger = logger;
+        _cloudName = (config["CLOUDINARY_CLOUD_NAME"] ?? "").Trim();
+        _uploadPreset = (config["CLOUDINARY_UPLOAD_PRESET"] ?? "echovibe").Trim();
+        Console.WriteLine($"[Cloudinary] cloud={_cloudName} preset={_uploadPreset} configured={IsConfigured}");
     }
 
     public bool IsConfigured =>
@@ -31,29 +30,22 @@ public class CloudinaryService
 
         if (!IsConfigured)
         {
-            LastError = "Cloudinary is not configured (missing CLOUDINARY_CLOUD_NAME or UPLOAD_PRESET).";
-            _logger?.LogWarning(LastError);
+            LastError = "Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.";
+            Console.WriteLine("[Cloudinary] " + LastError);
             return null;
         }
 
-        var name = file.Name ?? "upload.jpg";
-        var ext = Path.GetExtension(name).ToLowerInvariant();
-        var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg" };
-
-        var typeOk = !string.IsNullOrEmpty(file.ContentType) &&
-                     allowedTypes.Contains(file.ContentType.ToLowerInvariant());
-        var extOk = allowedExt.Contains(ext);
-
-        if (!extOk && !typeOk)
+        if (file is null)
         {
-            LastError = $"File type not allowed ({ext}, {file.ContentType}).";
+            LastError = "No file selected.";
             return null;
         }
+
+        Console.WriteLine($"[Cloudinary] Uploading name={file.Name} size={file.Size} type={file.ContentType}");
 
         if (file.Size <= 0 || file.Size > maxBytes)
         {
-            LastError = $"File size invalid ({file.Size} bytes). Max {maxBytes}.";
+            LastError = $"File too large or empty ({file.Size} bytes). Max {maxBytes}.";
             return null;
         }
 
@@ -64,20 +56,18 @@ public class CloudinaryService
             content.Add(new StringContent(_uploadPreset), "upload_preset");
 
             var streamContent = new StreamContent(stream);
-            var contentType = string.IsNullOrWhiteSpace(file.ContentType)
-                ? "application/octet-stream"
-                : file.ContentType;
-            streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-            content.Add(streamContent, "file", string.IsNullOrWhiteSpace(name) ? "photo.png" : name);
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType);
+            content.Add(streamContent, "file", string.IsNullOrWhiteSpace(file.Name) ? "photo.jpg" : file.Name);
 
             var url = $"https://api.cloudinary.com/v1_1/{_cloudName}/image/upload";
             using var response = await _http.PostAsync(url, content);
             var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[Cloudinary] status={(int)response.StatusCode} body={json}");
 
             if (!response.IsSuccessStatusCode)
             {
-                LastError = $"Cloudinary error {(int)response.StatusCode}: {json}";
-                _logger?.LogWarning(LastError);
+                LastError = $"Cloudinary rejected upload ({(int)response.StatusCode}). Check preset is Unsigned.";
                 return null;
             }
 
@@ -91,7 +81,7 @@ public class CloudinaryService
         catch (Exception ex)
         {
             LastError = ex.Message;
-            _logger?.LogError(ex, "Cloudinary upload exception");
+            Console.WriteLine("[Cloudinary] exception: " + ex);
             return null;
         }
     }

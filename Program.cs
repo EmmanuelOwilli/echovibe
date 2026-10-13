@@ -46,12 +46,13 @@ builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
 {
     options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB
 });
+builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<CloudinaryService>();
-builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(o =>
-{
-    o.MaximumReceiveMessageSize = 10 * 1024 * 1024;
-});
 
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    options.MaximumReceiveMessageSize = 10 * 1024 * 1024;
+});
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
