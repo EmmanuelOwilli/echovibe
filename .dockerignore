@@ -1,0 +1,11 @@
+@'
+bin/
+obj/
+.vs/
+.git/
+*.user
+*.db
+*.db-shm
+*.db-wal
+wwwroot/uploads/
+'@ | Set-Content -Path .\.dockerignore -Encoding utf8
