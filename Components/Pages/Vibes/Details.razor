@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using EchoVibe.Data
 @using EchoVibe.Models
+@using EchoVibe.Services
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
@@ -10,7 +11,6 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
-@using EchoVibe.Services
 @inject CloudinaryService Cloudinary
 
 <PageTitle>@(project?.Title ?? "Vibe") - EchoVibe</PageTitle>
@@ -28,7 +28,7 @@ else
             {
                 <img src="@project.ImageUrl" alt="@project.Title"
                      class="img-fluid rounded mb-3"
-                     style="width:100%; max-height:420px; object-fit:cover;" />
+                     style="width:100%; max-height:360px; object-fit:cover;" />
             }
 
             @if (!string.IsNullOrEmpty(project.VibeType))
@@ -36,13 +36,9 @@ else
                 <span class="badge bg-primary mb-2">@project.VibeType</span>
             }
 
-            <h1>@project.Title</h1>
-            <p class="text-muted">
-                By <strong>@(project.User?.DisplayName ?? "User")</strong>
-                · @project.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
-            </p>
+            <h1 class="mb-3">@project.Title</h1>
 
-            <div class="mb-3" style="white-space: pre-wrap;">@project.Description</div>
+            @* Author + profile photo *@
             <div class="d-flex align-items-center gap-3 mb-3">
     @if (!string.IsNullOrEmpty(project.User?.ProfileImageUrl))
     {
@@ -70,12 +66,44 @@ else
     </div>
 </div>
 
+            <div class="mb-3" style="white-space: pre-wrap;">@project.Description</div>
+
+            <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+                @if (isAuthenticated)
+                {
+                    <button class="btn @(hasLiked ? "btn-danger" : "btn-outline-danger") btn-sm"
+                            @onclick="ToggleLike">
+                        @(hasLiked ? "♥ Unlike" : "♡ Like") (@likeCount)
+                    </button>
+
+                    @if (!isOwnVibe)
+                    {
+                        <button class="btn @(isFollowing ? "btn-secondary" : "btn-outline-primary") btn-sm"
+                                @onclick="ToggleFollow">
+                            @(isFollowing ? "Unfollow" : "Follow") @(project.User?.DisplayName)
+                        </button>
+                    }
+
+                    @if (isOwnVibe)
+                    {
+                        <a class="btn btn-outline-primary btn-sm" href="@($"vibes/edit/{project.Id}")">Edit vibe</a>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">
+                        ♡ @likeCount —
+                        <a href="/Account/Login">Login</a> to like
+                    </span>
+                }
+                <a class="btn btn-outline-secondary btn-sm" href="vibes">Back</a>
+            </div>
+
             <hr />
 
-            @* ===== POSTS WALL ===== *@
             <h3 class="mb-3">Vibe wall</h3>
             <p class="text-muted small">
-                Share a quote, a short message, or a photo. For when you need comfort, calm, or connection.
+                Share a quote, a short message, or a photo.
             </p>
 
             @if (isAuthenticated && isOwnVibe)
@@ -84,7 +112,7 @@ else
                     <div class="card-body">
                         <label class="form-label fw-semibold">New post</label>
                         <textarea class="form-control mb-2" rows="3" @bind="newPostText"
-                                  placeholder="A quote, a thought, something that helps when life feels heavy..."></textarea>
+                                  placeholder="A quote, a thought, something that helps..."></textarea>
                         <InputFile class="form-control mb-2" OnChange="OnPostFile" accept="image/*" />
                         <button class="btn btn-primary btn-sm" @onclick="AddPost"
                                 disabled="@(string.IsNullOrWhiteSpace(newPostText) || postBusy)">
@@ -103,7 +131,7 @@ else
             }
             else
             {
-                <p class="text-muted small mb-3"><a href="/Account/Login">Login</a> to like and comment on posts.</p>
+                <p class="text-muted small mb-3"><a href="/Account/Login">Login</a> to like and comment.</p>
             }
 
             @if (posts is null)
@@ -112,7 +140,7 @@ else
             }
             else if (!posts.Any())
             {
-                <p class="text-muted">No posts yet. @(isOwnVibe ? "Share the first thought on this vibe." : "")</p>
+                <p class="text-muted">No posts yet. @(isOwnVibe ? "Share the first thought." : "")</p>
             }
             else
             {
@@ -129,7 +157,7 @@ else
                             @if (!string.IsNullOrEmpty(post.ImageUrl))
                             {
                                 <img src="@post.ImageUrl" alt="Post image" class="img-fluid rounded mb-2"
-                                     style="max-height: 320px; object-fit: cover;" />
+                                     style="max-height: 280px; object-fit: cover;" />
                             }
 
                             <div class="d-flex gap-2 align-items-center mb-2">
@@ -181,7 +209,7 @@ else
             <hr class="my-4" />
 
             <h4>About this vibe</h4>
-            <p class="text-muted small">General comments on the vibe itself:</p>
+            <p class="text-muted small">General comments on the vibe:</p>
 
             @if (isAuthenticated)
             {
@@ -260,7 +288,8 @@ else
             hasLiked = currentUserId != null && project.Likes!.Any(l => l.UserId == currentUserId);
             isOwnVibe = currentUserId != null && project.UserId == currentUserId;
             isFollowing = currentUserId != null &&
-                await Db.Follows.AnyAsync(f => f.FollowerId == currentUserId && f.FollowingId == project.UserId);
+                await Db.Follows.AnyAsync(f =>
+                    f.FollowerId == currentUserId && f.FollowingId == project.UserId);
         }
         else
         {
@@ -296,10 +325,11 @@ else
         string? imageUrl = null;
         if (postFile is not null)
         {
-            imageUrl = await SaveImageAsync(postFile, "posts");
+            imageUrl = await Cloudinary.UploadAsync(postFile);
             if (imageUrl is null)
             {
-                postError = "Image must be jpg/png/gif/webp under 5 MB.";
+                postError = Cloudinary.LastError
+                    ?? "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
                 postBusy = false;
                 return;
             }
@@ -323,9 +353,15 @@ else
     private async Task TogglePostLike(int postId)
     {
         if (currentUserId is null) return;
-        var existing = await Db.PostLikes.FirstOrDefaultAsync(l => l.VibePostId == postId && l.UserId == currentUserId);
+        var existing = await Db.PostLikes
+            .FirstOrDefaultAsync(l => l.VibePostId == postId && l.UserId == currentUserId);
         if (existing is not null) Db.PostLikes.Remove(existing);
-        else Db.PostLikes.Add(new PostLike { VibePostId = postId, UserId = currentUserId, CreatedAt = DateTime.UtcNow });
+        else Db.PostLikes.Add(new PostLike
+        {
+            VibePostId = postId,
+            UserId = currentUserId,
+            CreatedAt = DateTime.UtcNow
+        });
         await Db.SaveChangesAsync();
         await LoadAsync();
     }
@@ -348,18 +384,18 @@ else
         await LoadAsync();
     }
 
-    private async Task<string?> SaveImageAsync(IBrowserFile file, string folder)
-{
-    // folder ignored — Cloudinary hosts the file
-    return await Cloudinary.UploadAsync(file);
-}
-
     private async Task ToggleLike()
     {
         if (currentUserId is null || project is null) return;
-        var existing = await Db.Likes.FirstOrDefaultAsync(l => l.ProjectId == Id && l.UserId == currentUserId);
+        var existing = await Db.Likes
+            .FirstOrDefaultAsync(l => l.ProjectId == Id && l.UserId == currentUserId);
         if (existing is not null) Db.Likes.Remove(existing);
-        else Db.Likes.Add(new Like { ProjectId = Id, UserId = currentUserId, CreatedAt = DateTime.UtcNow });
+        else Db.Likes.Add(new Like
+        {
+            ProjectId = Id,
+            UserId = currentUserId,
+            CreatedAt = DateTime.UtcNow
+        });
         await Db.SaveChangesAsync();
         await LoadAsync();
     }
@@ -367,9 +403,15 @@ else
     private async Task ToggleFollow()
     {
         if (currentUserId is null || project is null || isOwnVibe) return;
-        var existing = await Db.Follows.FirstOrDefaultAsync(f => f.FollowerId == currentUserId && f.FollowingId == project.UserId);
+        var existing = await Db.Follows.FirstOrDefaultAsync(f =>
+            f.FollowerId == currentUserId && f.FollowingId == project.UserId);
         if (existing is not null) Db.Follows.Remove(existing);
-        else Db.Follows.Add(new Follow { FollowerId = currentUserId, FollowingId = project.UserId, CreatedAt = DateTime.UtcNow });
+        else Db.Follows.Add(new Follow
+        {
+            FollowerId = currentUserId,
+            FollowingId = project.UserId,
+            CreatedAt = DateTime.UtcNow
+        });
         await Db.SaveChangesAsync();
         await LoadAsync();
     }
@@ -377,7 +419,13 @@ else
     private async Task AddComment()
     {
         if (currentUserId is null || string.IsNullOrWhiteSpace(newComment)) return;
-        Db.Comments.Add(new Comment { ProjectId = Id, UserId = currentUserId, Content = newComment.Trim(), CreatedAt = DateTime.UtcNow });
+        Db.Comments.Add(new Comment
+        {
+            ProjectId = Id,
+            UserId = currentUserId,
+            Content = newComment.Trim(),
+            CreatedAt = DateTime.UtcNow
+        });
         await Db.SaveChangesAsync();
         newComment = string.Empty;
         await LoadAsync();

@@ -1,6 +1,5 @@
 @page "/vibes/edit/{Id:int}"
 @rendermode InteractiveServer
-
 @using System.ComponentModel.DataAnnotations
 @using EchoVibe.Data
 @using EchoVibe.Models
@@ -10,9 +9,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
-
 @attribute [Authorize]
-
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
@@ -23,11 +20,12 @@
 
 @if (notFound)
 {
-    <p>Vibe not found.</p>
+    <p class="text-danger">Vibe not found.</p>
 }
 else if (forbidden)
 {
-    <p>You can only edit your own vibes.</p>
+    <p class="text-danger">You can only edit your own vibes.</p>
+    <a href="vibes">Back to vibes</a>
 }
 else if (Input is null)
 {
@@ -37,163 +35,84 @@ else
 {
     <div class="row justify-content-center">
         <div class="col-md-8">
-
             <h1 class="mb-3">Edit Vibe</h1>
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger">
-                    @errorMessage
-                </div>
-            }
 
             @if (!string.IsNullOrEmpty(currentImageUrl))
             {
-                <div class="mb-3">
-                    <label class="form-label">Current photo</label>
-
-                    <div>
-                        <img src="@currentImageUrl"
-                             alt="Current Vibe photo"
-                             class="ev-img-detail mb-2" />
-                    </div>
-
-                    @if (selectedFile is not null)
-                    {
-                        <div class="form-text">
-                            A new photo has been selected. Saving will replace the current photo.
-                        </div>
-                    }
-                </div>
+                <img src="@currentImageUrl" alt="Current cover"
+                     class="img-fluid rounded mb-3"
+                     style="max-height:280px;object-fit:cover;width:100%;" />
             }
-            else
+
+            @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-light border mb-3">
-                    This Vibe currently has no photo.
-                    You can add one below.
-                </div>
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success">@successMessage</div>
             }
 
             <EditForm Model="Input" OnValidSubmit="HandleSave">
                 <DataAnnotationsValidator />
 
-                <ValidationSummary class="text-danger" />
-
                 <div class="mb-3">
                     <label class="form-label">Title</label>
-
-                    <InputText class="form-control"
-                               @bind-Value="Input.Title" />
-
+                    <InputText class="form-control" @bind-Value="Input.Title" />
                     <ValidationMessage For="() => Input.Title" />
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Vibe type</label>
-
-                    <InputSelect class="form-select"
-                                 @bind-Value="Input.VibeType">
-
+                    <InputSelect class="form-select" @bind-Value="Input.VibeType">
                         <option value="">Select a type...</option>
-
                         @foreach (var t in VibeTypes.All)
                         {
                             <option value="@t">@t</option>
                         }
-
                     </InputSelect>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Description</label>
-
-                    <InputTextArea class="form-control"
-                                   rows="4"
-                                   @bind-Value="Input.Description" />
-
-                    <ValidationMessage For="() => Input.Description" />
+                    <InputTextArea class="form-control" rows="5" @bind-Value="Input.Description" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">
-                        Vibe photo
-                    </label>
-
-                    <InputFile class="form-control"
-                               OnChange="OnFileChange"
-                               accept="image/*" />
-
-                    @if (string.IsNullOrEmpty(currentImageUrl))
-                    {
-                        <div class="form-text">
-                            Add a photo to this Vibe. JPG, PNG, GIF or WEBP under 5 MB.
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="form-text">
-                            Leave empty to keep the current photo.
-                            Choose a new photo if you want to replace it.
-                        </div>
-                    }
-
-                    @if (selectedFile is not null)
-                    {
-                        <div class="alert alert-info mt-2 mb-0">
-                            <strong>New photo selected:</strong>
-                            @selectedFile.Name
-                        </div>
-                    }
+                    <label class="form-label">New cover image (optional)</label>
+                    <InputFile class="form-control" OnChange="OnFileChange" accept="image/*" />
+                    <div class="form-text">Leave empty to keep the current photo.</div>
                 </div>
 
-                <div class="mt-4">
-
-                    <button type="submit"
-                            class="btn btn-primary"
-                            disabled="@busy">
-
-                        @(busy ? "Saving..." : "Save changes")
-                    </button>
-
-                    <a class="btn btn-outline-secondary ms-2"
-                       href="@($"vibes/{Id}")">
-
-                        Cancel
-                    </a>
-
-                </div>
-
+                <button type="submit" class="btn btn-primary" disabled="@busy">
+                    @(busy ? "Saving..." : "Save changes")
+                </button>
+                <a class="btn btn-outline-secondary ms-2" href="@($"vibes/{Id}")">Cancel</a>
             </EditForm>
-
         </div>
     </div>
 }
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
+    [Parameter] public int Id { get; set; }
 
     private EditModel? Input;
-
+    private Project? project;
     private string? currentImageUrl;
-
     private IBrowserFile? selectedFile;
-
     private string? errorMessage;
-
+    private string? successMessage;
     private bool busy;
-
     private bool notFound;
-
     private bool forbidden;
 
-    private Project? project;
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        project = await Db.Projects
-            .FirstOrDefaultAsync(p => p.Id == Id);
+        notFound = false;
+        forbidden = false;
+        errorMessage = null;
 
+        project = await Db.Projects.FirstOrDefaultAsync(p => p.Id == Id);
         if (project is null)
         {
             notFound = true;
@@ -201,9 +120,7 @@ else
         }
 
         var state = await AuthState.GetAuthenticationStateAsync();
-
         var user = await UserManager.GetUserAsync(state.User);
-
         if (user is null || project.UserId != user.Id)
         {
             forbidden = true;
@@ -211,101 +128,70 @@ else
         }
 
         currentImageUrl = project.ImageUrl;
-
         Input = new EditModel
         {
             Title = project.Title,
-            Description = project.Description,
-            VibeType = project.VibeType
+            Description = project.Description ?? "",
+            VibeType = project.VibeType ?? ""
         };
     }
 
-    private void OnFileChange(InputFileChangeEventArgs e)
-    {
-        selectedFile = e.File;
-
-        errorMessage = null;
-    }
+    private void OnFileChange(InputFileChangeEventArgs e) => selectedFile = e.File;
 
     private async Task HandleSave()
     {
-        if (Input is null || project is null)
-        {
-            return;
-        }
+        if (Input is null || project is null) return;
 
         busy = true;
         errorMessage = null;
+        successMessage = null;
 
         try
         {
-            /*
-             * If the user selected a new photo:
-             *
-             * 1. Upload it to Cloudinary.
-             * 2. Get the Cloudinary URL.
-             * 3. Save that URL to the existing Vibe.
-             *
-             * This works whether the Vibe already has an image
-             * or had no image when it was originally posted.
-             */
             if (selectedFile is not null)
             {
                 var url = await Cloudinary.UploadAsync(selectedFile);
-
-                if (string.IsNullOrWhiteSpace(url))
+                if (url is null)
                 {
-                    errorMessage =
-                        "Image upload failed. Please use JPG, PNG, GIF or WEBP under 5 MB.";
-
-                    busy = false;
+                    errorMessage = Cloudinary.LastError
+                        ?? "Image upload failed. Use jpg/png under 5 MB.";
                     return;
                 }
-
                 project.ImageUrl = url;
+                currentImageUrl = url;
             }
 
-            /*
-             * Update the existing Vibe.
-             * We are NOT creating a new Vibe here.
-             */
             project.Title = Input.Title.Trim();
-
             project.Description = string.IsNullOrWhiteSpace(Input.Description)
                 ? null
                 : Input.Description.Trim();
-
             project.VibeType = string.IsNullOrWhiteSpace(Input.VibeType)
                 ? null
                 : Input.VibeType;
-
             project.UpdatedAt = DateTime.UtcNow;
 
             await Db.SaveChangesAsync();
-
-            /*
-             * Return to the updated Vibe after saving.
-             */
+            successMessage = "Vibe updated.";
             Navigation.NavigateTo($"vibes/{Id}");
         }
         catch (Exception ex)
         {
-            errorMessage =
-                $"Unable to save your Vibe. {ex.Message}";
-
+            errorMessage = "Could not save: " + ex.Message;
+        }
+        finally
+        {
             busy = false;
         }
     }
 
     private sealed class EditModel
     {
-        [Required]
-        [StringLength(100)]
+        [Required, StringLength(100)]
         public string Title { get; set; } = string.Empty;
 
         [StringLength(2000)]
-        public string? Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
-        public string? VibeType { get; set; }
+        public string VibeType { get; set; } = string.Empty;
     }
 }
