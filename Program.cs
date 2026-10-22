@@ -8,13 +8,18 @@ using EchoVibe.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=echovibe.db";
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration["DATABASE_URL"];
+
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("Missing database connection string.");
+
+if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+    connectionString = "postgresql://" + connectionString[11..];
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
-
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+    options.UseNpgsql(connectionString));
 
 // Identity
 builder.Services
