@@ -75,7 +75,7 @@ else
 
                 <div class="mb-3">
                     <label class="form-label">Message</label>
-                    <InputTextArea class="form-control" rows="5" @bind-Value="Input.Description" />
+                    <InputTextArea class="form-control" rows="10" @bind-Value="Input.Description" />
                 </div>
 
                 <div class="mb-3">
@@ -204,7 +204,7 @@ else
         [Required, StringLength(100)]
         public string Title { get; set; } = string.Empty;
 
-        [StringLength(2000)]
+        // No StringLength — unlimited message body
         public string Description { get; set; } = string.Empty;
 
         public string VibeType { get; set; } = string.Empty;

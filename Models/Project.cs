@@ -9,12 +9,12 @@ public class Project
     [Required, StringLength(100)]
     public string Title { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    // No length limit — long posts/stories allowed
     public string? Description { get; set; }
 
     public string? ImageUrl { get; set; }
 
-    [StringLength(50)]
+    [StringLength(80)]
     public string? VibeType { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
