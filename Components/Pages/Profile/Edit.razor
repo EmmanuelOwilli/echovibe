@@ -1,16 +1,16 @@
 @page "/profile/edit"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
 @using EchoVibe.Models
+@using EchoVibe.Services
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
-@using EchoVibe.Services
-@inject CloudinaryService Cloudinary
 @inject CloudinaryService Cloudinary
 
 <PageTitle>Edit Profile - EchoVibe</PageTitle>
@@ -28,40 +28,49 @@
             <div class="alert alert-danger">@error</div>
         }
 
-        <EditForm Model="Input" OnValidSubmit="SaveAsync">
-            <DataAnnotationsValidator />
+        @if (user is null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <EditForm Model="Input" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
 
-            <div class="mb-3 text-center">
-                @if (!string.IsNullOrEmpty(previewUrl))
-                {
-                    <img src="@previewUrl" class="rounded-circle mb-2"
-                         style="width:100px;height:100px;object-fit:cover;" alt="Profile" />
-                }
-                <InputFile class="form-control" OnChange="OnFile" accept="image/*" />
-                <div class="form-text">Optional. JPG/PNG/GIF/WebP, max 5 MB.</div>
-            </div>
+                <div class="mb-3 text-center">
+                    @if (!string.IsNullOrEmpty(previewUrl))
+                    {
+                        <img src="@previewUrl"
+                             class="rounded-circle mb-2"
+                             style="width:100px;height:100px;object-fit:cover;"
+                             alt="Profile" />
+                    }
+                    <InputFile class="form-control" OnChange="OnFile" accept="image/*" />
+                    <div class="form-text">Optional. JPG/PNG/GIF/WebP, max 5 MB.</div>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Display name</label>
-                <InputText class="form-control" @bind-Value="Input.DisplayName" />
-                <ValidationMessage For="() => Input.DisplayName" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Display name</label>
+                    <InputText class="form-control" @bind-Value="Input.DisplayName" />
+                    <ValidationMessage For="() => Input.DisplayName" />
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Bio</label>
-                <InputTextArea class="form-control" rows="3" @bind-Value="Input.Bio" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Bio</label>
+                    <InputTextArea class="form-control" rows="3" @bind-Value="Input.Bio" />
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Country</label>
-                <InputText class="form-control" @bind-Value="Input.Country" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Country</label>
+                    <InputText class="form-control" @bind-Value="Input.Country" />
+                </div>
 
-            <button type="submit" class="btn btn-primary" disabled="@busy">
-                @(busy ? "Saving..." : "Save Changes")
-            </button>
-            <a class="btn btn-outline-secondary ms-2" href="profile">Cancel</a>
-        </EditForm>
+                <button type="submit" class="btn btn-primary" disabled="@busy">
+                    @(busy ? "Saving..." : "Save Changes")
+                </button>
+                <a class="btn btn-outline-secondary ms-2" href="profile">Cancel</a>
+            </EditForm>
+        }
     </div>
 </div>
 
@@ -94,51 +103,58 @@
     private async Task SaveAsync()
     {
         if (user is null) return;
+
         busy = true;
         error = null;
         message = null;
 
-        user.DisplayName = Input.DisplayName.Trim();
-        user.Bio = Input.Bio?.Trim();
-        user.Country = Input.Country?.Trim();
-
-        if (file is not null)
+        try
         {
-            var url = await SaveImageAsync(file);
-            if (url is null)
+            user.DisplayName = Input.DisplayName.Trim();
+            user.Bio = Input.Bio?.Trim();
+            user.Country = Input.Country?.Trim();
+
+            if (file is not null)
             {
-                error = "Invalid image. Use jpg/png/gif/webp under 5 MB.";
-                busy = false;
-                return;
+                var url = await Cloudinary.UploadAsync(file);
+                if (url is null)
+                {
+                    error = Cloudinary.LastError ?? "Invalid image. Use jpg/png/gif/webp under 5 MB.";
+                    return;
+                }
+                user.ProfileImageUrl = url;
+                previewUrl = url;
             }
-            user.ProfileImageUrl = url;
-            previewUrl = url;
-        }
 
-        var result = await UserManager.UpdateAsync(user);
-        if (result.Succeeded)
-        {
-            message = "Profile updated.";
-            Navigation.NavigateTo("/profile");
+            var result = await UserManager.UpdateAsync(user);
+            if (result.Succeeded)
+            {
+                message = "Profile updated.";
+                Navigation.NavigateTo("/profile");
+            }
+            else
+            {
+                error = string.Join(" ", result.Errors.Select(e => e.Description));
+            }
         }
-        else
+        catch
         {
-            error = string.Join(" ", result.Errors.Select(e => e.Description));
+            error = "Could not save profile. Please try again.";
         }
-        busy = false;
+        finally
+        {
+            busy = false;
+        }
     }
 
-    private async Task<string?> SaveImageAsync(IBrowserFile file)
-{
-    return await Cloudinary.UploadAsync(file);
-}
-
-    private class ProfileModel
+    private sealed class ProfileModel
     {
         [Required, StringLength(50)]
         public string DisplayName { get; set; } = "";
+
         [StringLength(500)]
         public string? Bio { get; set; }
+
         [StringLength(100)]
         public string? Country { get; set; }
     }

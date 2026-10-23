@@ -1,12 +1,12 @@
 ﻿@page "/"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using EchoVibe.Data
 @using EchoVibe.Models
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Net.Http.Json
 @using System.Text.Json.Serialization
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>EchoVibe - A place to feel better</PageTitle>
@@ -47,7 +47,6 @@
     </div>
 </section>
 
-@* ===== Weather (Kampala, Uganda) ===== *@
 <section class="ev-section">
     <div class="ev-weather-card">
         <div>
@@ -215,15 +214,8 @@
 @code {
     private static readonly string[] ComfortFeels =
     {
-        "Peace",
-        "Hope",
-        "Comfort",
-        "Rest",
-        "Courage",
-        "Joy",
-        "Prayer",
-        "Friendship",
-        "Renewal"
+        "Peace", "Hope", "Comfort", "Rest", "Courage",
+        "Joy", "Prayer", "Friendship", "Renewal"
     };
 
     private List<Project>? preview;
@@ -231,22 +223,30 @@
     private string? weatherError;
     private bool weatherLoading = true;
 
-    // Kampala, Uganda
     private const double Latitude = 0.3476;
     private const double Longitude = 32.5825;
     private const string LocationName = "Kampala, Uganda";
 
-    // Cache to reduce Open-Meteo rate limits on Render
     private static WeatherInfo? _cached;
     private static DateTime _cacheUntil = DateTime.MinValue;
 
     protected override async Task OnInitializedAsync()
     {
-        preview = await Db.Projects
-            .Include(p => p.User)
-            .OrderByDescending(p => p.CreatedAt)
-            .Take(3)
-            .ToListAsync();
+        // Own DbContext — avoids "second operation on this context" with Blazor Server
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            preview = await db.Projects
+                .AsNoTracking()
+                .Include(p => p.User)
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(6)
+                .ToListAsync();
+        }
+        catch
+        {
+            preview = new List<Project>();
+        }
 
         await LoadWeatherAsync();
     }
@@ -278,7 +278,6 @@
                 weatherError = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
                     ? "Weather is busy right now. Try again in a few minutes."
                     : "Could not load weather for Kampala right now.";
-                weatherLoading = false;
                 return;
             }
 
@@ -286,7 +285,6 @@
             if (data?.Current is null)
             {
                 weatherError = "Weather unavailable right now.";
-                weatherLoading = false;
                 return;
             }
 

@@ -1,5 +1,5 @@
 @page "/profile"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Authorize]
 @using EchoVibe.Models
 @using Microsoft.AspNetCore.Authorization
@@ -12,7 +12,7 @@
 
 @if (user is null)
 {
-    <p>Loading...</p>
+    <p>@(loadError ?? "Loading...")</p>
 }
 else
 {
@@ -22,7 +22,8 @@ else
                 <div class="card-body text-center p-4">
                     @if (!string.IsNullOrEmpty(user.ProfileImageUrl))
                     {
-                        <img src="@user.ProfileImageUrl" alt="Profile"
+                        <img src="@user.ProfileImageUrl"
+                             alt="Profile"
                              class="rounded-circle mb-3"
                              style="width:120px;height:120px;object-fit:cover;" />
                     }
@@ -33,17 +34,21 @@ else
                             @(string.IsNullOrEmpty(user.DisplayName) ? "?" : user.DisplayName[0])
                         </div>
                     }
+
                     <h2>@user.DisplayName</h2>
                     <p class="text-muted">@user.Email</p>
+
                     @if (!string.IsNullOrEmpty(user.Country))
                     {
-                        <p><strong>Country:</strong> @user.Country</p>
+                        <p class="mb-1"><strong>Country:</strong> @user.Country</p>
                     }
+
                     @if (!string.IsNullOrEmpty(user.Bio))
                     {
-                        <p style="white-space:pre-wrap;">@user.Bio</p>
+                        <p class="mt-2" style="white-space: pre-wrap;">@user.Bio</p>
                     }
-                    <a class="btn btn-primary" href="profile/edit">Edit Profile</a>
+
+                    <a class="btn btn-primary mt-2" href="profile/edit">Edit Profile</a>
                 </div>
             </div>
         </div>
@@ -52,10 +57,20 @@ else
 
 @code {
     private ApplicationUser? user;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await AuthState.GetAuthenticationStateAsync();
-        user = await UserManager.GetUserAsync(state.User);
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            user = await UserManager.GetUserAsync(state.User);
+            if (user is null)
+                loadError = "Could not load your profile. Try logging in again.";
+        }
+        catch
+        {
+            loadError = "Could not load profile right now.";
+        }
     }
 }

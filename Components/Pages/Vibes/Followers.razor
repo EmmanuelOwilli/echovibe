@@ -1,5 +1,5 @@
 @page "/followers"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Authorize]
 @using EchoVibe.Data
 @using EchoVibe.Models
@@ -7,7 +7,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 
@@ -21,7 +21,7 @@
 }
 else if (!people.Any())
 {
-    <p class="text-muted">No one is following you yet.</p>
+    <p class="text-muted">No followers yet.</p>
 }
 else
 {
@@ -30,7 +30,7 @@ else
         {
             <li class="list-group-item">
                 <strong>@u.DisplayName</strong>
-                <span class="text-muted">@u.Email</span>
+                <span class="text-muted ms-2">@u.Email</span>
             </li>
         }
     </ul>
@@ -43,9 +43,16 @@ else
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(state.User);
-        if (user is null) return;
+        if (user is null)
+        {
+            people = new();
+            return;
+        }
 
-        people = await Db.Follows
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        people = await db.Follows
+            .AsNoTracking()
             .Where(f => f.FollowingId == user.Id)
             .Select(f => f.Follower!)
             .ToListAsync();

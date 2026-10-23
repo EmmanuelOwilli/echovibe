@@ -1,27 +1,26 @@
 using EchoVibe.Components;
 using EchoVibe.Data;
 using EchoVibe.Models;
+using EchoVibe.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using EchoVibe.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// ----- Database -----
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration["DATABASE_URL"];
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-if (string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("Missing database connection string.");
-
-if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
-    connectionString = "postgresql://" + connectionString[11..];
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+// Single registration: factory (safe for Blazor Server)
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Identity
+// Identity / scoped code get a context from the factory (do NOT call AddDbContext as well)
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
+
+// ----- Identity -----
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
@@ -44,28 +43,27 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
+
+// HTTP clients (once each)
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<CloudinaryService>();
-builder.Services.AddHttpClient();
+
 builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
 {
     options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB
 });
-builder.Services.AddHttpClient();
-builder.Services.AddHttpClient<CloudinaryService>();
 
-builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
-{
-    options.MaximumReceiveMessageSize = 10 * 1024 * 1024;
-});
-// Blazor
+// ----- Blazor -----
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
+
+// Migrate inside a scope (never use app.Services root for DbContext)
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<EchoVibe.Data.ApplicationDbContext>();
+    var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    using var db = factory.CreateDbContext();
     db.Database.Migrate();
 }
 
@@ -77,19 +75,17 @@ if (!app.Environment.IsDevelopment())
 else
 {
     app.UseDeveloperExceptionPage();
-    app.UseMigrationsEndPoint();
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseStaticFiles();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
-app.UseStaticFiles();

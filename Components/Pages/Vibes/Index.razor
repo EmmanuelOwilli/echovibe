@@ -1,20 +1,18 @@
 @page "/vibes"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using EchoVibe.Data
 @using EchoVibe.Models
 @using Microsoft.EntityFrameworkCore
-@inject ApplicationDbContext Db
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <PageTitle>Vibes - EchoVibe</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1>Vibes</h1>
-        <p class="text-muted mb-0">Discover creative vibes from the EchoVibe community.</p>
+        <p class="text-muted mb-0">Discover comfort from the EchoVibe community.</p>
     </div>
-    <a class="btn btn-primary" href="vibes/create">+ Create Vibe</a>
+    <a class="btn btn-primary" href="vibes/create">+ Share a vibe</a>
 </div>
 
 @if (projects is null)
@@ -23,39 +21,27 @@
 }
 else if (!projects.Any())
 {
-    <div class="text-center py-5">
-        <h3>No vibes yet</h3>
-        <p class="text-muted">Be the first to share something.</p>
-        <a class="btn btn-primary" href="vibes/create">Create Your First Vibe</a>
-    </div>
+    <p class="text-muted">No vibes yet.</p>
 }
 else
 {
-    <div class="row g-4">
+    <div class="row g-3">
         @foreach (var p in projects)
         {
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-4">
                 <div class="card h-100 shadow-sm">
                     @if (!string.IsNullOrEmpty(p.ImageUrl))
                     {
-                        <img src="@p.ImageUrl" class="card-img-top" alt="@p.Title"
-                             style="height: 200px; object-fit: cover;" />
+                        <img src="@p.ImageUrl" class="card-img-top" style="height:200px;object-fit:cover;" alt="@p.Title" />
                     }
-                    <div class="card-body d-flex flex-column">
+                    <div class="card-body">
                         @if (!string.IsNullOrEmpty(p.VibeType))
                         {
-                            <span class="badge bg-primary align-self-start mb-2">@p.VibeType</span>
+                            <span class="badge bg-info text-dark mb-2">@p.VibeType</span>
                         }
                         <h5 class="card-title">@p.Title</h5>
-                        <p class="card-text text-muted small flex-grow-1">
-                            @(string.IsNullOrEmpty(p.Description)
-                                ? "No description."
-                                : (p.Description.Length > 100 ? p.Description[..100] + "..." : p.Description))
-                        </p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">By @(p.User?.DisplayName ?? "User")</small>
-                            <a class="btn btn-outline-primary btn-sm" href="@($"vibes/{p.Id}")">View Vibe</a>
-                        </div>
+                        <p class="small text-muted">By @(p.User?.DisplayName ?? "User")</p>
+                        <a class="btn btn-sm btn-outline-primary" href="@($"vibes/{p.Id}")">View</a>
                     </div>
                 </div>
             </div>
@@ -68,10 +54,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        projects = await Db.Projects
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        projects = await db.Projects
+            .AsNoTracking()
             .Include(p => p.User)
             .OrderByDescending(p => p.CreatedAt)
-            .Take(50)
             .ToListAsync();
     }
 }

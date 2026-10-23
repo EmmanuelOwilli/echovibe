@@ -5,7 +5,7 @@
 @using EchoVibe.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <PageTitle>New Vibes - EchoVibe</PageTitle>
 
@@ -52,13 +52,19 @@ else
 
 @code {
     private List<Project>? items;
+        
 
     protected override async Task OnInitializedAsync()
-    {
-        items = await Db.Projects
-            .Include(p => p.User)
-            .OrderByDescending(p => p.CreatedAt)
-            .Take(50)
-            .ToListAsync();
-    }
+{
+    await using var db = await DbFactory.CreateDbContextAsync();
+
+    items = await db.Projects
+        .AsNoTracking()
+        .Include(p => p.User)
+        .Include(p => p.Likes)
+        .OrderByDescending(p => p.Likes!.Count)
+        .ThenByDescending(p => p.CreatedAt)
+        .Take(30)
+        .ToListAsync();
+}
 }

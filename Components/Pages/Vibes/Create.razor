@@ -1,27 +1,29 @@
 @page "/vibes/create"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
-@using System.IO
 @using EchoVibe.Data
 @using EchoVibe.Models
+@using EchoVibe.Services
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.Hosting
-@attribute [Authorize]
-@inject ApplicationDbContext Db
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
-@using EchoVibe.Services
 @inject CloudinaryService Cloudinary
 
-<PageTitle>Create Vibe - EchoVibe</PageTitle>
+<PageTitle>Share a post - EchoVibe</PageTitle>
 
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <h1 class="mb-3">Create Vibe</h1>
+        <h1 class="mb-2">Share a post</h1>
+        <p class="text-muted mb-4">
+            Post something that comforts or encourages others — text, a mood, and an optional photo.
+        </p>
 
         <EditForm Model="Input" OnValidSubmit="HandleCreate">
             <DataAnnotationsValidator />
@@ -34,14 +36,14 @@
 
             <div class="mb-3">
                 <label class="form-label">Title</label>
-                <InputText class="form-control" @bind-Value="Input.Title" />
+                <InputText class="form-control" @bind-Value="Input.Title" placeholder="A short headline" />
                 <ValidationMessage For="() => Input.Title" />
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Vibe type</label>
+                <label class="form-label">Mood / feel (optional)</label>
                 <InputSelect class="form-select" @bind-Value="Input.VibeType">
-                    <option value="">Select a type...</option>
+                    <option value="">Select...</option>
                     @foreach (var t in VibeTypes.All)
                     {
                         <option value="@t">@t</option>
@@ -50,17 +52,19 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Description</label>
-                <InputTextArea class="form-control" rows="4" @bind-Value="Input.Description" />
+                <label class="form-label">Your message</label>
+                <InputTextArea class="form-control" rows="5" @bind-Value="Input.Description"
+                               placeholder="What do you want to share?" />
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Cover image (optional)</label>
+                <label class="form-label">Photo (optional)</label>
                 <InputFile class="form-control" OnChange="OnFileChange" accept="image/*" />
+                <div class="form-text">JPG, PNG, GIF or WebP · max about 5 MB</div>
             </div>
 
             <button type="submit" class="btn btn-primary" disabled="@busy">
-                @(busy ? "Saving..." : "Create Vibe")
+                @(busy ? "Posting..." : "Post")
             </button>
             <a class="btn btn-outline-secondary ms-2" href="vibes">Cancel</a>
         </EditForm>
@@ -73,58 +77,66 @@
     private string? errorMessage;
     private bool busy;
 
-    private void OnFileChange(InputFileChangeEventArgs e)
-    {
-        selectedFile = e.File;
-    }
+    private void OnFileChange(InputFileChangeEventArgs e) => selectedFile = e.File;
 
     private async Task HandleCreate()
     {
         busy = true;
         errorMessage = null;
 
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var user = await UserManager.GetUserAsync(state.User);
-        if (user is null)
+        try
         {
-            Navigation.NavigateTo("/Account/Login", forceLoad: true);
-            return;
-        }
-
-        string? imageUrl = null;
-        if (selectedFile is not null)
-        {
-            imageUrl = await SaveImageAsync(selectedFile);
-            if (imageUrl is null)
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var user = await UserManager.GetUserAsync(state.User);
+            if (user is null)
             {
-                errorMessage = "Only images under 5 MB (jpg, png, gif, webp) are allowed.";
-                busy = false;
+                Navigation.NavigateTo("/Account/Login", forceLoad: true);
                 return;
             }
+
+            string? imageUrl = null;
+            if (selectedFile is not null)
+            {
+                if (!Cloudinary.IsConfigured)
+                {
+                    errorMessage = "Image upload is not configured.";
+                    return;
+                }
+
+                imageUrl = await Cloudinary.UploadAsync(selectedFile);
+                if (imageUrl is null)
+                {
+                    errorMessage = Cloudinary.LastError ?? "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
+                    return;
+                }
+            }
+
+            var project = new Project
+            {
+                Title = Input.Title.Trim(),
+                Description = Input.Description?.Trim(),
+                VibeType = string.IsNullOrWhiteSpace(Input.VibeType) ? null : Input.VibeType,
+                ImageUrl = imageUrl,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+            db.Projects.Add(project);
+            await db.SaveChangesAsync();
+
+            Navigation.NavigateTo($"vibes/{project.Id}");
         }
-
-        var project = new Project
+        catch (Exception ex)
         {
-            Title = Input.Title.Trim(),
-            Description = Input.Description?.Trim(),
-            VibeType = string.IsNullOrWhiteSpace(Input.VibeType) ? null : Input.VibeType,
-            ImageUrl = imageUrl,
-            UserId = user.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        Db.Projects.Add(project);
-        await Db.SaveChangesAsync();
-        Navigation.NavigateTo($"vibes/{project.Id}");
+            errorMessage = "Could not save your post. Please try again.";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            busy = false;
+        }
     }
-
-   private async Task<string?> SaveImageAsync(IBrowserFile file)
-{
-    if (!Cloudinary.IsConfigured)
-        return null;
-
-    return await Cloudinary.UploadAsync(file);
-}
 
     private sealed class CreateModel
     {
