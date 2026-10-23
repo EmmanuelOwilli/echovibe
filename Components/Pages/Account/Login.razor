@@ -1,103 +1,32 @@
+
 @page "/Account/Login"
-@using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Identity
-@using EchoVibe.Models
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager Navigation
-@using EchoVibe.Services
-@inject CloudinaryService Cloudinary
 
-<PageTitle>Login - EchoVibe</PageTitle>
+<PageTitle>Login Temporarily Unavailable - EchoVibe</PageTitle>
 
-<div class="row justify-content-center mt-4">
-    <div class="col-md-5">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="mb-3">Welcome back</h2>
-                <p class="text-muted">Login to EchoVibe</p>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-4 p-md-5">
+                    <div class="display-4 mb-3">✨</div>
 
-                <EditForm Model="Input" method="post" OnValidSubmit="HandleLogin" FormName="login">
-                    <DataAnnotationsValidator />
+                    <h1 class="h3 mb-3">We'll Be Back Soon!</h1>
 
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger">@errorMessage</div>
-                    }
+                    <p class="text-muted mb-4">
+                        EchoVibe is currently in preview mode.
+                        Login is temporarily unavailable while we prepare
+                        for the official launch.
+                    </p>
 
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <InputText class="form-control" @bind-Value="Input.Email" />
-                        <ValidationMessage For="() => Input.Email" />
+                    <div class="alert alert-info">
+                        Thank you for your patience and support.
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <InputText type="password" class="form-control" @bind-Value="Input.Password" />
-                        <ValidationMessage For="() => Input.Password" />
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <InputCheckbox class="form-check-input" @bind-Value="Input.RememberMe" id="remember" />
-                        <label class="form-check-label" for="remember">Remember me</label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </EditForm>
-
-                <p class="mt-3 mb-0">
-                    New here? <a href="/Account/Register">Register</a>
-                    <p class="mt-2 mb-0">
-    <a href="/Account/ForgotPassword">Forgot password?</a>
-</p>
-                </p>
+                    <a href="/" class="btn btn-primary w-100">
+                        Back to Home
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-@code {
-    [SupplyParameterFromForm(FormName = "login")]
-    private LoginModel? Input { get; set; }
-
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
-
-    private string? errorMessage;
-
-    protected override void OnInitialized()
-    {
-        Input ??= new LoginModel();
-    }
-
-    private async Task HandleLogin()
-    {
-        Input ??= new LoginModel();
-        errorMessage = null;
-
-        var result = await SignInManager.PasswordSignInAsync(
-            Input.Email,
-            Input.Password,
-            Input.RememberMe,
-            lockoutOnFailure: false);
-
-        if (result.Succeeded)
-        {
-            var url = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
-            Navigation.NavigateTo(url, forceLoad: true);
-            return;
-        }
-
-        errorMessage = "Invalid email or password.";
-    }
-
-    public class LoginModel
-    {
-        [Required, EmailAddress]
-        public string Email { get; set; } = string.Empty;
-
-        [Required]
-        public string Password { get; set; } = string.Empty;
-
-        public bool RememberMe { get; set; }
-    }
-}
