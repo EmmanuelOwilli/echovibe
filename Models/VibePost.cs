@@ -11,8 +11,6 @@ public class VibePost
 
     public string UserId { get; set; } = string.Empty;
     public ApplicationUser? User { get; set; }
-
-    [Required, StringLength(2000)]
     public string Content { get; set; } = string.Empty;
 
     public string? ImageUrl { get; set; }

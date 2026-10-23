@@ -534,3 +534,71 @@ h1:focus {
         justify-content: flex-start;
     }
 }
+
+/* Post reading card */
+.ev-post-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.06);
+    padding: 1.25rem 1.5rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.ev-post-cover {
+    width: 100%;
+    max-height: 380px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.ev-post-tag {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #1877f2;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+
+.ev-post-title {
+    font-size: 1.65rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0.25rem 0 0.75rem;
+    color: #1c1e21;
+}
+
+.ev-post-body {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #050505;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.ev-post-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e4e6eb;
+}
+
+/* Update cards under a post */
+.ev-update-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    padding: 1rem 1.15rem;
+    margin-bottom: 0.85rem;
+}
+
+.ev-update-card .ev-update-meta {
+    font-size: 0.85rem;
+    color: #65676b;
+    margin-bottom: 0.5rem;
+}

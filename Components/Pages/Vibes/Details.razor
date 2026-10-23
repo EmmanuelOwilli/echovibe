@@ -340,50 +340,54 @@ else
     private void OnPostFile(InputFileChangeEventArgs e) => postFile = e.File;
 
     private async Task AddPost()
+{
+    if (!isOwnPost || currentUserId is null || string.IsNullOrWhiteSpace(newPostText))
+        return;
+
+    postBusy = true;
+    postError = null;
+
+    try
     {
-        if (!isOwnPost || currentUserId is null || string.IsNullOrWhiteSpace(newPostText)) return;
-
-        postBusy = true;
-        postError = null;
-
-        try
+        string? imageUrl = null;
+        if (postFile is not null)
         {
-            string? imageUrl = null;
-            if (postFile is not null)
+            imageUrl = await Cloudinary.UploadAsync(postFile);
+            if (imageUrl is null)
             {
-                imageUrl = await Cloudinary.UploadAsync(postFile);
-                if (imageUrl is null)
-                {
-                    postError = Cloudinary.LastError ?? "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
-                    return;
-                }
+                postError = Cloudinary.LastError
+                    ?? "Image upload failed. Try a smaller jpg/png (under 2–3 MB).";
+                return;
             }
+        }
 
-            await using var db = await DbFactory.CreateDbContextAsync();
-            db.VibePosts.Add(new VibePost
-            {
-                ProjectId = Id,
-                UserId = currentUserId,
-                Content = newPostText.Trim(),
-                ImageUrl = imageUrl,
-                CreatedAt = DateTime.UtcNow
-            });
-            await db.SaveChangesAsync();
+        await using var db = await DbFactory.CreateDbContextAsync();
 
-            newPostText = string.Empty;
-            postFile = null;
-            await LoadAsync();
-        }
-        catch
+        db.VibePosts.Add(new VibePost
         {
-            postError = "Could not save update. Please try again.";
-        }
-        finally
-        {
-            postBusy = false;
-        }
+            ProjectId = Id,
+            UserId = currentUserId,
+            Content = newPostText.Trim(),
+            ImageUrl = imageUrl,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+
+        newPostText = string.Empty;
+        postFile = null;
+        await LoadAsync();
     }
-
+    catch (Exception ex)
+    {
+        postError = ex.InnerException?.Message ?? ex.Message;
+        Console.WriteLine(ex);
+    }
+    finally
+    {
+        postBusy = false;
+    }
+}
     private async Task TogglePostLike(int postId)
     {
         if (currentUserId is null) return;
