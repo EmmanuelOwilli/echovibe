@@ -421,3 +421,116 @@ h1:focus {
     border-radius: 0.5rem;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
+
+/* Facebook-style shell */
+.ev-fb-page {
+    min-height: 100vh;
+    background: #f0f2f5;
+}
+
+.ev-fb-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1877f2;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,.12);
+}
+
+.ev-fb-header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0.55rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ev-fb-logo {
+    font-weight: 800;
+    font-size: 1.35rem;
+    color: #fff !important;
+    text-decoration: none !important;
+    letter-spacing: -0.02em;
+}
+
+.ev-fb-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    flex: 1;
+    justify-content: center;
+}
+
+.ev-fb-link {
+    color: rgba(255,255,255,.92) !important;
+    text-decoration: none !important;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.35rem;
+}
+
+.ev-fb-link:hover,
+.ev-fb-link.active {
+    background: rgba(255,255,255,.15);
+    color: #fff !important;
+}
+
+.ev-fb-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ev-fb-share {
+    background: #fff;
+    color: #1877f2 !important;
+    font-weight: 700;
+    text-decoration: none !important;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+}
+
+.ev-fb-logout {
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 0.9rem;
+    opacity: 0.95;
+}
+
+.ev-fb-body {
+    display: flex;
+    max-width: 1100px;
+    margin: 0 auto;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.ev-fb-side {
+    width: 220px;
+    flex-shrink: 0;
+}
+
+.ev-fb-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.ev-fb-content {
+    background: transparent;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 !important;
+}
+
+@media (max-width: 900px) {
+    .ev-fb-side {
+        display: none;
+    }
+    .ev-fb-nav {
+        justify-content: flex-start;
+    }
+}

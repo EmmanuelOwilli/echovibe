@@ -12,19 +12,16 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler')?.click()">
     <nav class="flex-column">
-
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                Home
-            </NavLink>
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
         </div>
 
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3 mt-3">
-                    <span class="nav-link" style="opacity:0.7; pointer-events:none;">
+                    <span class="nav-link" style="opacity:0.85; pointer-events:none;">
                         Hello, @displayName
                     </span>
                 </div>
@@ -41,7 +38,6 @@
                 </div>
             </NotAuthorized>
         </AuthorizeView>
-
     </nav>
 </div>
 

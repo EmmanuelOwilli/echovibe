@@ -1,5 +1,6 @@
 @page "/vibes/edit/{Id:int}"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
 @using EchoVibe.Data
 @using EchoVibe.Models
@@ -9,23 +10,22 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
-@attribute [Authorize]
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
 @inject CloudinaryService Cloudinary
 
-<PageTitle>Edit Vibe - EchoVibe</PageTitle>
+<PageTitle>Edit post - EchoVibe</PageTitle>
 
 @if (notFound)
 {
-    <p class="text-danger">Vibe not found.</p>
+    <p class="text-danger">Post not found.</p>
 }
 else if (forbidden)
 {
-    <p class="text-danger">You can only edit your own vibes.</p>
-    <a href="vibes">Back to vibes</a>
+    <p class="text-danger">You can only edit your own posts.</p>
+    <a href="vibes">Back to posts</a>
 }
 else if (Input is null)
 {
@@ -35,11 +35,11 @@ else
 {
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <h1 class="mb-3">Edit Vibe</h1>
+            <h1 class="mb-3">Edit post</h1>
 
             @if (!string.IsNullOrEmpty(currentImageUrl))
             {
-                <img src="@currentImageUrl" alt="Current cover"
+                <img src="@currentImageUrl" alt="Current photo"
                      class="img-fluid rounded mb-3"
                      style="max-height:280px;object-fit:cover;width:100%;" />
             }
@@ -63,9 +63,9 @@ else
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Vibe type</label>
+                    <label class="form-label">Mood / feel</label>
                     <InputSelect class="form-select" @bind-Value="Input.VibeType">
-                        <option value="">Select a type...</option>
+                        <option value="">Select...</option>
                         @foreach (var t in VibeTypes.All)
                         {
                             <option value="@t">@t</option>
@@ -74,12 +74,12 @@ else
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Description</label>
+                    <label class="form-label">Message</label>
                     <InputTextArea class="form-control" rows="5" @bind-Value="Input.Description" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">New cover image (optional)</label>
+                    <label class="form-label">New photo (optional)</label>
                     <InputFile class="form-control" OnChange="OnFileChange" accept="image/*" />
                     <div class="form-text">Leave empty to keep the current photo.</div>
                 </div>
@@ -97,8 +97,8 @@ else
     [Parameter] public int Id { get; set; }
 
     private EditModel? Input;
-    private Project? project;
     private string? currentImageUrl;
+    private string? ownerUserId;
     private IBrowserFile? selectedFile;
     private string? errorMessage;
     private string? successMessage;
@@ -112,7 +112,8 @@ else
         forbidden = false;
         errorMessage = null;
 
-        project = await Db.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id);
         if (project is null)
         {
             notFound = true;
@@ -127,6 +128,7 @@ else
             return;
         }
 
+        ownerUserId = project.UserId;
         currentImageUrl = project.ImageUrl;
         Input = new EditModel
         {
@@ -140,7 +142,7 @@ else
 
     private async Task HandleSave()
     {
-        if (Input is null || project is null) return;
+        if (Input is null || ownerUserId is null) return;
 
         busy = true;
         errorMessage = null;
@@ -148,13 +150,28 @@ else
 
         try
         {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+            if (project is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var user = await UserManager.GetUserAsync(state.User);
+            if (user is null || project.UserId != user.Id)
+            {
+                forbidden = true;
+                return;
+            }
+
             if (selectedFile is not null)
             {
                 var url = await Cloudinary.UploadAsync(selectedFile);
                 if (url is null)
                 {
-                    errorMessage = Cloudinary.LastError
-                        ?? "Image upload failed. Use jpg/png under 5 MB.";
+                    errorMessage = Cloudinary.LastError ?? "Image upload failed. Use jpg/png under 5 MB.";
                     return;
                 }
                 project.ImageUrl = url;
@@ -165,13 +182,11 @@ else
             project.Description = string.IsNullOrWhiteSpace(Input.Description)
                 ? null
                 : Input.Description.Trim();
-            project.VibeType = string.IsNullOrWhiteSpace(Input.VibeType)
-                ? null
-                : Input.VibeType;
+            project.VibeType = string.IsNullOrWhiteSpace(Input.VibeType) ? null : Input.VibeType;
             project.UpdatedAt = DateTime.UtcNow;
 
-            await Db.SaveChangesAsync();
-            successMessage = "Vibe updated.";
+            await db.SaveChangesAsync();
+            successMessage = "Post updated.";
             Navigation.NavigateTo($"vibes/{Id}");
         }
         catch (Exception ex)

@@ -77,7 +77,10 @@
     private string? errorMessage;
     private bool busy;
 
-    private void OnFileChange(InputFileChangeEventArgs e) => selectedFile = e.File;
+    private void OnFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
 
     private async Task HandleCreate()
     {
@@ -106,7 +109,8 @@
                 imageUrl = await Cloudinary.UploadAsync(selectedFile);
                 if (imageUrl is null)
                 {
-                    errorMessage = Cloudinary.LastError ?? "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
+                    errorMessage = Cloudinary.LastError
+                        ?? "Image upload failed. Use jpg/png/gif/webp under 5 MB.";
                     return;
                 }
             }
